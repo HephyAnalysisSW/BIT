@@ -1,1 +1,1 @@
-# BIT
+# Boosted Information Trees!
