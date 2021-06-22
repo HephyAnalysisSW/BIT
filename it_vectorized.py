@@ -300,7 +300,6 @@ training_diff_weights    = np.dot(weights, w.get_diff_mask('cWWW', cWWW=1))
 print("number of events %d" % len(features))
 tic_overall = time.time()
 
-
 sorted_feature_values_and_weight_sums = []
 
 for max_depth in range(args.minDepth,args.maxDepth+1):
