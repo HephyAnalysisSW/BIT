@@ -112,7 +112,7 @@ class Node:
                     self.split_value     = value
                     self.split_score     = score
 
-        self.split_left_group = self.features[:,i_feature]<=self.split_value
+        self.split_left_group = self.features[:,self.split_i_feature]<=self.split_value
  
     def get_split_vectorized( self ):
         ''' determine where to split the features, first vectorized version of FI maximization
@@ -154,7 +154,7 @@ class Node:
                 self.split_value     = value
                 self.split_score     = score
 
-        self.split_left_group = self.features[:,i_feature]<=self.split_value
+        self.split_left_group = self.features[:,self.split_i_feature]<=self.split_value
 
     def find_split_vectorized(self, sorted_weight_sums):
         total_weight_sum = sorted_weight_sums[-1]
@@ -266,14 +266,12 @@ n_events    = min(max_events, n_events)
 entrystart, entrystop = 0, n_events 
 
 # Load features
-branches    = [ "mva_photon_pt", ]#"mva_photon_eta", "mva_photonJetdR", "mva_photonLepdR", "mva_mT" ]
-#branches    = [ "mva_photon_pt", "mva_photon_eta"]# "mva_photonJetdR", "mva_photonLepdR", "mva_mT" ]
+#branches    = [ "mva_photon_pt", ]#"mva_photon_eta", "mva_photonJetdR", "mva_photonLepdR", "mva_mT" ]
+branches    = [ "mva_photon_pt", "mva_photon_eta", "mva_photonJetdR", "mva_photonLepdR", "mva_mT" ]
 df          = tree.pandas.df(branches = branches, entrystart=entrystart, entrystop=entrystop)
 features    = df.values
 
 print(features.shape)
-# TODO: only one feature for now
-assert features.shape[1] == 1
 
 # Load weights
 #from Analysis.Tools.WeightInfo import WeightInfo
