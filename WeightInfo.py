@@ -415,12 +415,9 @@ class WeightInfo:
 
         return result
 
-    def get_weight_yield_factors( self, variables=None, **kwargs ):
+    def get_weight_mask( self, **kwargs ):
         '''compute yield factors (in the usual order of p_C) using the kwargs as WC
         '''
-        # If no argument given, provide all
-        if variables is None: variables = self.variables
-
         # add the arguments from the ref-point
         self.set_default_args( kwargs )
 
@@ -466,7 +463,7 @@ class WeightInfo:
 
         return result
 
-    def get_diff_weight_yield_factors( self, vars, **kwargs ):
+    def get_diff_mask( self, vars, **kwargs ):
         '''compute diff yield factors (in the usual order of p_C) using the kwargs as WC
         '''
 

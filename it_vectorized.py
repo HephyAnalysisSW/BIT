@@ -9,7 +9,7 @@ import time
 from Analysis.Tools.helpers import chunk
 
 class Node:
-    def __init__( self, features, weights, FI_func, max_depth, min_size, sorted_feature_values_and_weight_sums, weight_factors, diff_weight_factors, split_method="python_loop", depth=0):
+    def __init__( self, features, weights, FI_func, max_depth, min_size, sorted_feature_values_and_weight_sums, weight_mask, diff_weight_mask, split_method="python_loop", depth=0):
 
         ## basic BDT configuration
         self.max_depth  = max_depth
@@ -24,13 +24,13 @@ class Node:
  
         assert len(self.features) == len(self.weights), "Unequal length!"
 
-        # weight factors to calculate FI vectorized
+        # weight mask to calculate FI vectorized
         self.polynomial_dim = self.weights.shape[-1]
         self.sorted_feature_values_and_weight_sums = sorted_feature_values_and_weight_sums 
-        self.weight_factors = weight_factors
-        self.diff_weight_factors = diff_weight_factors
-        assert len(self.weight_factors) == self.polynomial_dim, "Unequal length weights and factors!"
-        assert len(self.diff_weight_factors) == self.polynomial_dim, "Unequal length weights and diff factors!"
+        self.weight_mask = weight_mask
+        self.diff_weight_mask = diff_weight_mask
+        assert len(self.weight_mask) == self.polynomial_dim, "Unequal length weights and mask!"
+        assert len(self.diff_weight_mask) == self.polynomial_dim, "Unequal length weights and diff mask!"
 
         self.size       = len(self.features)
 
@@ -159,10 +159,10 @@ class Node:
     def find_split_vectorized(self, sorted_weight_sums):
         total_weight_sum = sorted_weight_sums[-1]
         sorted_weight_sums = sorted_weight_sums[0:-1]
-        yields_left = np.sum(sorted_weight_sums*self.weight_factors, axis=1)
-        yields_right = np.sum((total_weight_sum-sorted_weight_sums)*self.weight_factors,axis=1)
-        diff_yields_left = sorted_weight_sums*self.diff_weight_factors
-        diff_yields_right = (total_weight_sum-sorted_weight_sums)*self.diff_weight_factors
+        yields_left = np.sum(sorted_weight_sums*self.weight_mask, axis=1)
+        yields_right = np.sum((total_weight_sum-sorted_weight_sums)*self.weight_mask,axis=1)
+        diff_yields_left = sorted_weight_sums*self.diff_weight_mask
+        diff_yields_right = (total_weight_sum-sorted_weight_sums)*self.diff_weight_mask
         fisher_information_left = np.sum(diff_yields_left, axis=1)**2/yields_left
         fisher_information_right = np.sum(diff_yields_right, axis=1)**2/yields_right
         fisher_scores = fisher_information_left + fisher_information_right
@@ -201,7 +201,7 @@ class Node:
         else:
             #print ("Choice4", depth )
             # Continue splitting left box. 
-            self.left             = Node(self.features[self.split_left_group], self.weights[self.split_left_group], FI_func=self.FI_func, max_depth=self.max_depth, min_size=self.min_size, sorted_feature_values_and_weight_sums=self.sorted_feature_values_and_weight_sums, weight_factors=self.weight_factors, diff_weight_factors=self.diff_weight_factors, split_method=self.split_method, depth=self.depth+1 )
+            self.left             = Node(self.features[self.split_left_group], self.weights[self.split_left_group], FI_func=self.FI_func, max_depth=self.max_depth, min_size=self.min_size, sorted_feature_values_and_weight_sums=self.sorted_feature_values_and_weight_sums, weight_mask=self.weight_mask, diff_weight_mask=self.diff_weight_mask, split_method=self.split_method, depth=self.depth+1 )
         # process right child
         if np.count_nonzero(~self.split_left_group) <= min_size:
             #print ("Choice5", depth, self.FI_from_group(~self.split_left_group) )
@@ -210,7 +210,7 @@ class Node:
         else:
             #print ("Choice6", depth  )
             # Continue splitting right box. 
-            self.right            = Node(self.features[~self.split_left_group], self.weights[~self.split_left_group], FI_func=self.FI_func, max_depth=self.max_depth, min_size=self.min_size, sorted_feature_values_and_weight_sums=self.sorted_feature_values_and_weight_sums, weight_factors=self.weight_factors, diff_weight_factors=self.diff_weight_factors, split_method=self.split_method, depth=self.depth+1 )
+            self.right            = Node(self.features[~self.split_left_group], self.weights[~self.split_left_group], FI_func=self.FI_func, max_depth=self.max_depth, min_size=self.min_size, sorted_feature_values_and_weight_sums=self.sorted_feature_values_and_weight_sums, weight_mask=self.weight_mask, diff_weight_mask=self.diff_weight_mask, split_method=self.split_method, depth=self.depth+1 )
 
 #    # Prediction    
 #    def predict( self, row ):
@@ -267,7 +267,7 @@ entrystart, entrystop = 0, n_events
 
 # Load features
 #branches    = [ "mva_photon_pt", ]#"mva_photon_eta", "mva_photonJetdR", "mva_photonLepdR", "mva_mT" ]
-branches    = [ "mva_photon_pt", "mva_photon_eta", "mva_photonJetdR", "mva_photonLepdR", "mva_mT" ]
+branches    = [ "mva_photon_pt" ]#, "mva_photon_eta", "mva_photonJetdR", "mva_photonLepdR", "mva_mT" ]
 df          = tree.pandas.df(branches = branches, entrystart=entrystart, entrystop=entrystop)
 features    = df.values
 
@@ -289,36 +289,23 @@ min_size = 50
 assert len(features)==len(weights), "Need equal length for weights and features."
 
 FI_func = lambda coeffs: w.get_fisherInformation_matrix( coeffs, variables = ['cWWW'], cWWW=1)[1][0][0]
-# TODO: hardcoded for variables = ['cWWW'], cWWW=1
-weight_factors = w.get_weight_yield_factors(['cWWW'], cWWW=1)
-# calculate derivatives for all variables
-#diff_weight_factors = { var:w.get_diff_weight_yield_factors( var, cWWW=1 ) for var in ['cWWW'] }
-diff_weight_factors = w.get_diff_weight_yield_factors( 'cWWW', cWWW=1 )
+weight_mask = w.get_weight_mask( cWWW=1 )
 
-#node       = Node( features, weights, FI_func=FI_func, max_depth=1, min_size=min_size )
+diff_weight_mask = w.get_diff_mask( 'cWWW', cWWW=1 )
+
+#TODO:
+training_weights         = np.dot(weights, w.get_weight_mask(cWWW=1))
+training_diff_weights    = np.dot(weights, w.get_diff_mask('cWWW', cWWW=1))
 
 print("number of events %d" % len(features))
 tic_overall = time.time()
 
-# sort features once and create weight sums before construction
-# TODO: delta evaluation for weight sums
+
 sorted_feature_values_and_weight_sums = []
-#for i_feature in range(features.shape[1]):
-#    feature_values = features[:,i_feature]
-#    weight_sum = np.zeros(len(weights[0]))
-#    weight_sums = []
-#    sorted_feature_values = []
-#    
-#    for position, value in sorted(enumerate(feature_values), key=operator.itemgetter(1)):
-#        weight_sum = weight_sum+weights[position]
-#        weight_sums.append(weight_sum)
-#        sorted_feature_values.append(value)
-#    
-#    sorted_feature_values_and_weight_sums.append({'sorted_feature_values': np.array(sorted_feature_values), 'weight_sums': np.array(weight_sums)})
 
 for max_depth in range(args.minDepth,args.maxDepth+1):
-    tic = time.time()
-    node       = Node( features, weights, FI_func=FI_func, max_depth=max_depth, min_size=min_size, sorted_feature_values_and_weight_sums=sorted_feature_values_and_weight_sums, weight_factors=weight_factors, diff_weight_factors=diff_weight_factors, split_method=args.splitMethod )
+    tic  = time.time()
+    node = Node( features, weights, FI_func=FI_func, max_depth=max_depth, min_size=min_size, sorted_feature_values_and_weight_sums=sorted_feature_values_and_weight_sums, weight_mask=weight_mask, diff_weight_mask=diff_weight_mask, split_method=args.splitMethod )
     toc = time.time()
     print("tree construction in {time:0.4f} seconds".format(time=toc-tic))
     print "max_depth", max_depth
