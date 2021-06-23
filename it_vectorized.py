@@ -311,19 +311,33 @@ if __name__=="__main__":
 
     max_depth = 4
 
+    information_trees = []
     for split_method in ['python_loop', 'vectorized_split_and_weight_sums']:
         tic  = time.time()
-        node = Node( features, max_depth=max_depth, min_size=min_size, training_weights=training_weights, training_diff_weights=training_diff_weights, split_method=split_method )
+        root = Node( features, max_depth=max_depth, min_size=min_size, training_weights=training_weights, training_diff_weights=training_diff_weights, split_method=split_method )
+        information_trees.append(root)
         toc = time.time()
         print("tree construction in {time:0.4f} seconds for split_method {method:s}".format(time=toc-tic, method=split_method))
         print "max_depth", max_depth
         print 
-        node.print_tree()
+        root.print_tree()
         print 
-        print "Total FI", node.total_FI() 
+        print "Total FI", root.total_FI()
         print 
         print 
 
     toc_overall = time.time()
     all_construction_time = toc_overall-tic_overall
     print("all constructions in {time:0.4f} seconds".format(time=all_construction_time))
+
+    # test prediction
+    features_sorted_by_photon_pt = np.argsort(features[:,0])
+    event_1 = features[features_sorted_by_photon_pt[-1],:]
+    event_2 = features[features_sorted_by_photon_pt[0],:]
+    event_3 = features[features_sorted_by_photon_pt[int(len(features)/2)],:]
+
+    print "Test prediction for a couple of events"
+    for event in [event_1, event_2, event_3]:
+        print(event)
+        print(information_trees[0].predict(event))
+        print(information_trees[1].predict(event))
