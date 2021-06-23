@@ -83,20 +83,21 @@ class Node:
             weight_diff_sum = 0. 
             weight_diff_sums= []
             for position, value in sorted(enumerate(feature_values), key=operator.itemgetter(1)):
-                weight_sum = weight_sum+self.training_weights[position]
+                weight_sum          = weight_sum+self.training_weights[position]
                 weight_sums.append( (value,  weight_sum) )
-                weight_diff_sum = weight_diff_sum+self.training_diff_weights[position]
+                weight_diff_sum     = weight_diff_sum+self.training_diff_weights[position]
                 weight_diff_sums.append(  weight_diff_sum )
 
             total_weight = weight_sums[-1][1]
             total_diff_weight = weight_diff_sums[-1]
             for i_value, (value, weight_sum) in enumerate(weight_sums):
-                #print weight_sum, total_weights-weight_sum
+                if weight_sum==0 or total_weight==weight_sum: continue
+                #if i_value<self.min_size or i_value>self.size-self.min_size: continue 
                 gain = weight_diff_sums[i_value]**2/weight_sum + (total_diff_weight-weight_diff_sums[i_value])**2/(total_weight-weight_sum) 
                 if gain > self.split_gain: 
                     self.split_i_feature = i_feature
                     self.split_value     = value
-                    self.split_gain     = gain
+                    self.split_gain      = gain
 
         self.split_left_group = self.features[:,self.split_i_feature]<=self.split_value
         #print "python_loop", self.split_i_feature, self.split_value,  self.split_left_group 
@@ -282,7 +283,7 @@ if __name__=="__main__":
 
     max_depth = 4
 
-    for split_method in ['python_loop', 'vectorized_split_and_weight_sums']:
+    for split_method in ['python_loop', ]:#'vectorized_split_and_weight_sums']:
         tic  = time.time()
         node = Node( features, max_depth=max_depth, min_size=min_size, training_weights=training_weights, training_diff_weights=training_diff_weights, split_method=split_method )
         toc = time.time()
