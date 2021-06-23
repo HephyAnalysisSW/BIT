@@ -192,15 +192,15 @@ class Node:
             # Continue splitting right box. 
             self.right            = Node(self.features[~self.split_left_group], max_depth=self.max_depth, min_size=self.min_size, training_weights = self.training_weights[~self.split_left_group], training_diff_weights = self.training_diff_weights[~self.split_left_group], split_method=self.split_method, depth=self.depth+1 )
 
-#    # Prediction    
-#    def predict( self, row ):
-#        ''' obtain the result by recursively descending down the tree
-#        '''
-#        node = self.left if row[self.split_i_feature]<self.split_value else self.right
-#        if isinstance(node, ResultNode):
-#            return node.return_value
-#        else:
-#            return node.predict(row)
+    # Prediction    
+    def predict( self, features, key = 'score'):
+        ''' obtain the result by recursively descending down the tree
+        '''
+        node = self.left if features[self.split_i_feature]<=self.split_value else self.right
+        if isinstance(node, ResultNode):
+            return getattr(node, key)
+        else:
+            return node.predict(features, key=key)
 
     # Print a decision tree
     def print_tree(self, key = 'FI', depth=0):
