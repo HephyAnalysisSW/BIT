@@ -9,7 +9,7 @@ import time
 from Analysis.Tools.helpers import chunk
 
 class Node:
-    def __init__( self, features, weights, FI_func, max_depth, min_size, sorted_feature_values_and_weight_sums, weight_mask, diff_weight_mask, split_method="python_loop", depth=0):
+    def __init__( self, features, weights, FI_func, max_depth, min_size, weight_mask, diff_weight_mask, split_method="python_loop", depth=0):
 
         ## basic BDT configuration
         self.max_depth  = max_depth
@@ -26,7 +26,6 @@ class Node:
 
         # weight mask to calculate FI vectorized
         self.polynomial_dim = self.weights.shape[-1]
-        self.sorted_feature_values_and_weight_sums = sorted_feature_values_and_weight_sums 
         self.weight_mask = weight_mask
         self.diff_weight_mask = diff_weight_mask
         assert len(self.weight_mask) == self.polynomial_dim, "Unequal length weights and mask!"
@@ -134,7 +133,6 @@ class Node:
                 #toc = time.time()
                 #print("vectorized split in {time:0.4f} seconds".format(time=toc-tic))
                 value = feature_values[feature_sorted_indices[idx]]
-                #value = self.sorted_feature_values_and_weight_sums[i_feature]['sorted_feature_values'][idx]
             else:
                 weight_sum = np.zeros(len(self.weights[0]))
                 weight_sums= []
@@ -201,7 +199,7 @@ class Node:
         else:
             #print ("Choice4", depth )
             # Continue splitting left box. 
-            self.left             = Node(self.features[self.split_left_group], self.weights[self.split_left_group], FI_func=self.FI_func, max_depth=self.max_depth, min_size=self.min_size, sorted_feature_values_and_weight_sums=self.sorted_feature_values_and_weight_sums, weight_mask=self.weight_mask, diff_weight_mask=self.diff_weight_mask, split_method=self.split_method, depth=self.depth+1 )
+            self.left             = Node(self.features[self.split_left_group], self.weights[self.split_left_group], FI_func=self.FI_func, max_depth=self.max_depth, min_size=self.min_size, weight_mask=self.weight_mask, diff_weight_mask=self.diff_weight_mask, split_method=self.split_method, depth=self.depth+1 )
         # process right child
         if np.count_nonzero(~self.split_left_group) <= min_size:
             #print ("Choice5", depth, self.FI_from_group(~self.split_left_group) )
@@ -210,7 +208,7 @@ class Node:
         else:
             #print ("Choice6", depth  )
             # Continue splitting right box. 
-            self.right            = Node(self.features[~self.split_left_group], self.weights[~self.split_left_group], FI_func=self.FI_func, max_depth=self.max_depth, min_size=self.min_size, sorted_feature_values_and_weight_sums=self.sorted_feature_values_and_weight_sums, weight_mask=self.weight_mask, diff_weight_mask=self.diff_weight_mask, split_method=self.split_method, depth=self.depth+1 )
+            self.right            = Node(self.features[~self.split_left_group], self.weights[~self.split_left_group], FI_func=self.FI_func, max_depth=self.max_depth, min_size=self.min_size, weight_mask=self.weight_mask, diff_weight_mask=self.diff_weight_mask, split_method=self.split_method, depth=self.depth+1 )
 
 #    # Prediction    
 #    def predict( self, row ):
@@ -243,78 +241,78 @@ class ResultNode:
     def print_tree(self, depth=0):
         print('%s[%s] (%d)' % (((depth)*' ', self.return_value, self.size)))
 
-import uproot
-import awkward
-import numpy as np
-import pandas as pd
+if __name__=="__main__":
 
-# Arguments
-import argparse
-argParser = argparse.ArgumentParser(description = "Argument parser")
-argParser.add_argument('--maxEvents', action='store', type=int, default=10000)
-argParser.add_argument('--minDepth', action='store', type=int, default=1)
-argParser.add_argument('--maxDepth', action='store', type=int, default=4)
-argParser.add_argument('--splitMethod', action='store', type=str, default='vectorized_split_and_weight_sums')
-args = argParser.parse_args()
+    import uproot
+    import awkward
+    import numpy as np
+    import pandas as pd
 
-max_events  = args.maxEvents
-input_file  = "/eos/vbc/user/robert.schoefbeck/TMB/bit/MVA-training/ttG_WG_small/WGToLNu_fast/WGToLNu_fast.root"
-upfile      = uproot.open( input_file )
-tree        = upfile["Events"]
-n_events    = len( upfile["Events"] )
-n_events    = min(max_events, n_events)
-entrystart, entrystop = 0, n_events 
+    # Arguments
+    import argparse
+    argParser = argparse.ArgumentParser(description = "Argument parser")
+    argParser.add_argument('--maxEvents', action='store', type=int, default=10000)
+    argParser.add_argument('--minDepth', action='store', type=int, default=1)
+    argParser.add_argument('--maxDepth', action='store', type=int, default=4)
+    argParser.add_argument('--splitMethod', action='store', type=str, default='vectorized_split_and_weight_sums')
+    args = argParser.parse_args()
 
-# Load features
-#branches    = [ "mva_photon_pt", ]#"mva_photon_eta", "mva_photonJetdR", "mva_photonLepdR", "mva_mT" ]
-branches    = [ "mva_photon_pt" ]#, "mva_photon_eta", "mva_photonJetdR", "mva_photonLepdR", "mva_mT" ]
-df          = tree.pandas.df(branches = branches, entrystart=entrystart, entrystop=entrystop)
-features    = df.values
+    max_events  = args.maxEvents
+    input_file  = "/eos/vbc/user/robert.schoefbeck/TMB/bit/MVA-training/ttG_WG_small/WGToLNu_fast/WGToLNu_fast.root"
+    upfile      = uproot.open( input_file )
+    tree        = upfile["Events"]
+    n_events    = len( upfile["Events"] )
+    n_events    = min(max_events, n_events)
+    entrystart, entrystop = 0, n_events 
 
-print(features.shape)
+    # Load features
+    branches    = [ "mva_photon_pt", ]#"mva_photon_eta", "mva_photonJetdR", "mva_photonLepdR", "mva_mT" ]
+    #branches    = [ "mva_photon_pt" , "mva_photon_eta", "mva_photonJetdR", "mva_photonLepdR", "mva_mT" ]
+    df          = tree.pandas.df(branches = branches, entrystart=entrystart, entrystop=entrystop)
+    features    = df.values
 
-# Load weights
-#from Analysis.Tools.WeightInfo import WeightInfo
-# custom WeightInfo
-from WeightInfo import WeightInfo
-w = WeightInfo("/eos/vbc/user/robert.schoefbeck/gridpacks/v6/WGToLNu_reweight_card.pkl")
-w.set_order(2)
+    print(features.shape)
 
-# Load all weights and reshape the array according to ndof from weightInfo
-weights     = tree.pandas.df(branches = ["p_C"], entrystart=entrystart, entrystop=entrystop).values.reshape((-1,w.nid))
-print(weights.shape)
+    # Load weights
+    #from Analysis.Tools.WeightInfo import WeightInfo
+    # custom WeightInfo
+    from WeightInfo import WeightInfo
+    w = WeightInfo("/eos/vbc/user/robert.schoefbeck/gridpacks/v6/WGToLNu_reweight_card.pkl")
+    w.set_order(2)
 
-min_size = 50
+    # Load all weights and reshape the array according to ndof from weightInfo
+    weights     = tree.pandas.df(branches = ["p_C"], entrystart=entrystart, entrystop=entrystop).values.reshape((-1,w.nid))
+    print(weights.shape)
 
-assert len(features)==len(weights), "Need equal length for weights and features."
+    min_size = 50
 
-FI_func = lambda coeffs: w.get_fisherInformation_matrix( coeffs, variables = ['cWWW'], cWWW=1)[1][0][0]
-weight_mask = w.get_weight_mask( cWWW=1 )
+    assert len(features)==len(weights), "Need equal length for weights and features."
 
-diff_weight_mask = w.get_diff_mask( 'cWWW', cWWW=1 )
+    FI_func = lambda coeffs: w.get_fisherInformation_matrix( coeffs, variables = ['cWWW'], cWWW=1)[1][0][0]
+    weight_mask = w.get_weight_mask( cWWW=1 )
 
-#TODO:
-training_weights         = np.dot(weights, w.get_weight_mask(cWWW=1))
-training_diff_weights    = np.dot(weights, w.get_diff_mask('cWWW', cWWW=1))
+    diff_weight_mask = w.get_diff_mask( 'cWWW', cWWW=1 )
 
-print("number of events %d" % len(features))
-tic_overall = time.time()
+    #TODO:
+    training_weights         = np.dot(weights, w.get_weight_mask(cWWW=1))
+    training_diff_weights    = np.dot(weights, w.get_diff_mask('cWWW', cWWW=1))
 
-sorted_feature_values_and_weight_sums = []
+    print("number of events %d" % len(features))
+    tic_overall = time.time()
 
-for max_depth in range(args.minDepth,args.maxDepth+1):
-    tic  = time.time()
-    node = Node( features, weights, FI_func=FI_func, max_depth=max_depth, min_size=min_size, sorted_feature_values_and_weight_sums=sorted_feature_values_and_weight_sums, weight_mask=weight_mask, diff_weight_mask=diff_weight_mask, split_method=args.splitMethod )
-    toc = time.time()
-    print("tree construction in {time:0.4f} seconds".format(time=toc-tic))
-    print "max_depth", max_depth
-    print 
-    node.print_tree()
-    print 
-    print "Total FI", node.total_FI() 
-    print 
-    print 
+    for max_depth in range(args.minDepth,args.maxDepth+1):
+        tic  = time.time()
+        node = Node( features, weights, FI_func=FI_func, max_depth=max_depth, min_size=min_size, weight_mask=weight_mask, diff_weight_mask=diff_weight_mask, split_method=args.splitMethod )
+        toc = time.time()
+        print("tree construction in {time:0.4f} seconds".format(time=toc-tic))
+        print "max_depth", max_depth
+        print 
+        node.print_tree()
+        print 
+        print "Total FI", node.total_FI() 
+        print 
+        print 
 
-toc_overall = time.time()
-all_construction_time = toc_overall-tic_overall
-print("all constructions in {time:0.4f} seconds".format(time=all_construction_time))
+    toc_overall = time.time()
+    all_construction_time = toc_overall-tic_overall
+    print("all constructions in {time:0.4f} seconds".format(time=all_construction_time))
