@@ -72,7 +72,7 @@ class Node:
         '''
 
         # loop over the features ... assume the features consists of rows with [x1, x2, ...., xN]
-        self.split_i_feature, self.split_value, self.split_score, self.split_left_group = None, float('nan'), 0, None
+        self.split_i_feature, self.split_value, self.split_gain, self.split_left_group = None, float('nan'), 0, None
 
         # loop over features
         for i_feature in range(len(self.features[0])):
@@ -92,11 +92,11 @@ class Node:
             total_diff_weight = weight_diff_sums[-1]
             for i_value, (value, weight_sum) in enumerate(weight_sums):
                 #print weight_sum, total_weights-weight_sum
-                score = weight_diff_sums[i_value]**2/weight_sum + (total_diff_weight-weight_diff_sums[i_value])**2/(total_weight-weight_sum) 
-                if score > self.split_score: 
+                gain = weight_diff_sums[i_value]**2/weight_sum + (total_diff_weight-weight_diff_sums[i_value])**2/(total_weight-weight_sum) 
+                if gain > self.split_gain: 
                     self.split_i_feature = i_feature
                     self.split_value     = value
-                    self.split_score     = score
+                    self.split_gain     = gain
 
         self.split_left_group = self.features[:,self.split_i_feature]<=self.split_value
         #print "python_loop", self.split_i_feature, self.split_value,  self.split_left_group 
@@ -106,7 +106,7 @@ class Node:
         '''
 
         # loop over the features ... assume the features consists of rows with [x1, x2, ...., xN]
-        self.split_i_feature, self.split_value, self.split_score, self.split_left_group = None, float('nan'), 0, None
+        self.split_i_feature, self.split_value, self.split_gain, self.split_left_group = None, float('nan'), 0, None
 
         # loop over features
         for i_feature in range(len(self.features[0])):
@@ -119,15 +119,15 @@ class Node:
             #print weight_sums
             #print weight_diff_sums
             #tic = time.time()
-            idx, score = self.find_split_vectorized(weight_sums, weight_diff_sums)
+            idx, gain = self.find_split_vectorized(weight_sums, weight_diff_sums)
             #toc = time.time()
             #print("vectorized split in {time:0.4f} seconds".format(time=toc-tic))
             value = feature_values[feature_sorted_indices[idx]]
 
-            if score > self.split_score: 
+            if gain > self.split_gain: 
                 self.split_i_feature = i_feature
                 self.split_value     = value
-                self.split_score     = score
+                self.split_gain     = gain
 
         self.split_left_group = self.features[:,self.split_i_feature]<=self.split_value
 
@@ -140,9 +140,9 @@ class Node:
         fisher_information_left  = sorted_weight_diff_sums*sorted_weight_diff_sums/sorted_weight_sums 
         fisher_information_right = (total_diff_weight_sum-sorted_weight_diff_sums)*(total_diff_weight_sum-sorted_weight_diff_sums)/(total_weight_sum-sorted_weight_sums) 
 
-        fisher_scores = fisher_information_left + fisher_information_right
-        argmax_fi = np.argmax(np.nan_to_num(fisher_scores))
-        return argmax_fi, fisher_scores[argmax_fi]
+        fisher_gains = fisher_information_left + fisher_information_right
+        argmax_fi = np.argmax(np.nan_to_num(fisher_gains))
+        return argmax_fi, fisher_gains[argmax_fi]
 
     # Create child splits for a node or make terminal
     def split(self, depth):
@@ -161,20 +161,23 @@ class Node:
         #print("get_split in {time:0.4f} seconds".format(time=toc-tic))
 
         # decide what we put in the result node
-        result_func = self.FI_from_group
-        #result = self.score_from_group
+        result_funcs = { 
+            'size':  lambda group: np.count_nonzero(group),
+            'FI'  :  lambda group: self.FI_from_group(group),
+            'score': lambda group: self.score_from_group(group)
+            }
 
         # check for max depth or a 'no' split
         if  self.max_depth <= depth+1 or (not any(self.split_left_group)) or all(self.split_left_group): # Jason Brownlee starts counting depth at 1, we start counting at 0, hence the +1
             #print ("Choice2", depth, result_func(self.split_left_group), result_func(~self.split_left_group) )
             # The split was good, but we stop splitting further. Put the result of the split in the left/right boxes.
-            self.left, self.right = ResultNode(result_func(self.split_left_group), np.count_nonzero(self.split_left_group)), ResultNode(result_func(~self.split_left_group), np.count_nonzero(~self.split_left_group))
+            self.left, self.right = ResultNode(**{val:func(self.split_left_group) for val, func in result_funcs.iteritems()}), ResultNode(**{val:func(~self.split_left_group) for val, func in result_funcs.iteritems()})
             return
         # process left child
         if np.count_nonzero(self.split_left_group) <= min_size:
             #print ("Choice3", depth, result_func(self.split_left_group) )
             # Too few events in the left box. We stop.
-            self.left             = ResultNode(result_func(self.split_left_group), np.count_nonzero(self.split_left_group))
+            self.left             = ResultNode(**{val:func(self.split_left_group) for val, func in result_funcs.iteritems()})
         else:
             #print ("Choice4", depth )
             # Continue splitting left box. 
@@ -183,7 +186,7 @@ class Node:
         if np.count_nonzero(~self.split_left_group) <= min_size:
             #print ("Choice5", depth, result_func(~self.split_left_group) )
             # Too few events in the right box. We stop.
-            self.right            = ResultNode(result_func(~self.split_left_group), np.count_nonzero(~self.split_left_group))
+            self.right            = ResultNode(**{val:func(~self.split_left_group) for val, func in result_funcs.iteritems()})
         else:
             #print ("Choice6", depth  )
             # Continue splitting right box. 
@@ -200,25 +203,25 @@ class Node:
 #            return node.predict(row)
 
     # Print a decision tree
-    def print_tree(self, depth=0):
+    def print_tree(self, key = 'FI', depth=0):
         print('%s[X%d <= %.3f]' % ((self.depth*' ', self.split_i_feature, self.split_value)))
         for node in [self.left, self.right]:
-            node.print_tree(depth+1)
+            node.print_tree(key = key, depth = depth+1)
 
     def total_FI(self):
         result = 0
         for node in [self.left, self.right]:
-            result += node.return_value if isinstance(node, ResultNode) else node.total_FI()
+            result += node.FI if isinstance(node, ResultNode) else node.total_FI()
         return result
 
 class ResultNode:
     ''' Simple helper class to store result value.
     '''
-    def __init__( self, return_value, size ):
-        self.return_value   = return_value
-        self.size = size
-    def print_tree(self, depth=0):
-        print('%s[%s] (%d)' % (((depth)*' ', self.return_value, self.size)))
+    def __init__( self, **kwargs ):
+        for key, val in kwargs.iteritems():
+            setattr( self, key, val )
+    def print_tree(self, key = 'FI', depth=0):
+        print('%s[%s] (%d)' % (((depth)*' ', getattr( self, key), self.size)))
 
 if __name__=="__main__":
 
