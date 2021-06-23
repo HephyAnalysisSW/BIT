@@ -92,6 +92,11 @@ class Node:
             total_diff_weight = weight_diff_sums[-1]
             for i_value, (value, weight_sum) in enumerate(weight_sums):
                 if weight_sum==0 or total_weight==weight_sum: continue
+
+                # only evaluate last weight sum on plateau, we cannot split indistinguishable feature values
+                if i_value < len(weight_sums)-1 and weight_sums[i_value+1][0] == value:
+                    continue
+
                 #if i_value<self.min_size or i_value>self.size-self.min_size: continue 
                 gain = weight_diff_sums[i_value]**2/weight_sum + (total_diff_weight-weight_diff_sums[i_value])**2/(total_weight-weight_sum) 
                 if gain > self.split_gain: 
@@ -112,15 +117,18 @@ class Node:
         # loop over features
         for i_feature in range(len(self.features[0])):
             feature_values = self.features[:,i_feature]
-        
+
+            # stable sort uses timsort like sorted in python
+            #feature_sorted_indices = np.argsort(feature_values, kind='stable')
             feature_sorted_indices = np.argsort(feature_values)
             weight_sums      = np.cumsum(self.training_weights[feature_sorted_indices])
             weight_diff_sums = np.cumsum(self.training_diff_weights[feature_sorted_indices])
+            plateau_mask = (np.diff(feature_values[feature_sorted_indices]) != 0).astype(int)
 
             #print weight_sums
             #print weight_diff_sums
             #tic = time.time()
-            idx, gain = self.find_split_vectorized(weight_sums, weight_diff_sums)
+            idx, gain = self.find_split_vectorized(weight_sums, weight_diff_sums, plateau_mask)
             #toc = time.time()
             #print("vectorized split in {time:0.4f} seconds".format(time=toc-tic))
             value = feature_values[feature_sorted_indices[idx]]
@@ -132,7 +140,7 @@ class Node:
 
         self.split_left_group = self.features[:,self.split_i_feature]<=self.split_value
 
-    def find_split_vectorized(self, sorted_weight_sums, sorted_weight_diff_sums):
+    def find_split_vectorized(self, sorted_weight_sums, sorted_weight_diff_sums, plateau_mask):
         total_weight_sum         = sorted_weight_sums[-1]
         total_diff_weight_sum    = sorted_weight_diff_sums[-1]
         sorted_weight_sums       = sorted_weight_sums[0:-1]
@@ -142,7 +150,7 @@ class Node:
         fisher_information_right = (total_diff_weight_sum-sorted_weight_diff_sums)*(total_diff_weight_sum-sorted_weight_diff_sums)/(total_weight_sum-sorted_weight_sums) 
 
         fisher_gains = fisher_information_left + fisher_information_right
-        argmax_fi = np.argmax(np.nan_to_num(fisher_gains))
+        argmax_fi = np.argmax(np.nan_to_num(fisher_gains)*plateau_mask)
         return argmax_fi, fisher_gains[argmax_fi]
 
     # Create child splits for a node or make terminal
@@ -233,7 +241,7 @@ if __name__=="__main__":
     # Arguments
     import argparse
     argParser = argparse.ArgumentParser(description = "Argument parser")
-    argParser.add_argument('--maxEvents', action='store', type=int, default=10000)
+    argParser.add_argument('--maxEvents', action='store', type=int, default=100000)
     argParser.add_argument('--minDepth', action='store', type=int, default=1)
     argParser.add_argument('--maxDepth', action='store', type=int, default=4)
     argParser.add_argument('--splitMethod', action='store', type=str, default='vectorized_split_and_weight_sums')
@@ -241,6 +249,7 @@ if __name__=="__main__":
 
     max_events  = args.maxEvents
     input_file  = "/eos/vbc/user/robert.schoefbeck/TMB/bit/MVA-training/ttG_WG_small/WGToLNu_fast/WGToLNu_fast.root"
+    #input_file  = "/scratch-cbe/users/nikolaus.frohner/TMB/bit/MVA-training/ttG_WG/WGToLNu_fast/WGToLNu_fast.root"
     upfile      = uproot.open( input_file )
     tree        = upfile["Events"]
     n_events    = len( upfile["Events"] )
@@ -283,7 +292,7 @@ if __name__=="__main__":
 
     max_depth = 4
 
-    for split_method in ['python_loop', ]:#'vectorized_split_and_weight_sums']:
+    for split_method in ['python_loop', 'vectorized_split_and_weight_sums']:
         tic  = time.time()
         node = Node( features, max_depth=max_depth, min_size=min_size, training_weights=training_weights, training_diff_weights=training_diff_weights, split_method=split_method )
         toc = time.time()
