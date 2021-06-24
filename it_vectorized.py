@@ -31,6 +31,12 @@ class Node:
 
         self.split(depth=depth)
 
+        # Let's not leak the dataset.
+        del self.training_weights
+        del self.training_diff_weights
+        del self.features 
+        del self.split_left_group 
+
     # compute the score from a set of booleans defining the 'left' box and (by negation) the 'right' box
     def score_from_group( self, group):
         ''' Calculate FI for selection
@@ -172,12 +178,10 @@ class Node:
         return argmax_fi, fisher_gains[argmax_fi]
 
     # Create child splits for a node or make terminal
-    def split(self, depth):
+    def split(self, depth=0):
 
         # Find the best split
         #tic = time.time()
-        #self.get_split()
-        #self.get_split_fast()
         if self.split_method == "python_loop":
             self.get_split_fast()
         elif self.split_method == "vectorized_split" or self.split_method == "vectorized_split_and_weight_sums":
@@ -198,7 +202,10 @@ class Node:
         if  self.max_depth <= depth+1 or (not any(self.split_left_group)) or all(self.split_left_group): # Jason Brownlee starts counting depth at 1, we start counting at 0, hence the +1
             #print ("Choice2", depth, result_func(self.split_left_group), result_func(~self.split_left_group) )
             # The split was good, but we stop splitting further. Put the result of the split in the left/right boxes.
+            #self.left = ResultNode(**{val:func(np.ones(len(self.features),dtype=bool)) for val, func in result_funcs.iteritems()})
+            #self.right = None #ResultNode(**{val:func(~self.split_left_group) for val, func in result_funcs.iteritems()})
             self.left, self.right = ResultNode(**{val:func(self.split_left_group) for val, func in result_funcs.iteritems()}), ResultNode(**{val:func(~self.split_left_group) for val, func in result_funcs.iteritems()})
+
             return
         # process left child
         if np.count_nonzero(self.split_left_group) < 2*self.min_size:
