@@ -201,7 +201,7 @@ class Node:
             self.left, self.right = ResultNode(**{val:func(self.split_left_group) for val, func in result_funcs.iteritems()}), ResultNode(**{val:func(~self.split_left_group) for val, func in result_funcs.iteritems()})
             return
         # process left child
-        if np.count_nonzero(self.split_left_group) < 2*min_size:
+        if np.count_nonzero(self.split_left_group) < 2*self.min_size:
             #print ("Choice3", depth, result_func(self.split_left_group) )
             # Too few events in the left box. We stop.
             self.left             = ResultNode(**{val:func(self.split_left_group) for val, func in result_funcs.iteritems()})
@@ -210,7 +210,7 @@ class Node:
             # Continue splitting left box.
             self.left             = Node(self.features[self.split_left_group], max_depth=self.max_depth, min_size=self.min_size, training_weights = self.training_weights[self.split_left_group], training_diff_weights = self.training_diff_weights[self.split_left_group], split_method=self.split_method, depth=self.depth+1 )
         # process right child
-        if np.count_nonzero(~self.split_left_group) < 2*min_size:
+        if np.count_nonzero(~self.split_left_group) < 2*self.min_size:
             #print ("Choice5", depth, result_func(~self.split_left_group) )
             # Too few events in the right box. We stop.
             self.right            = ResultNode(**{val:func(~self.split_left_group) for val, func in result_funcs.iteritems()})
