@@ -55,7 +55,7 @@ class BoostedInformationTree:
 
             #histo.Scale(learning_rate)
             # reduce the score
-            self.training_diff_weights+= -self.learning_rate*np.multiply(self.training_weights, np.array([root.predict(feature) for feature in training_features]))
+            self.training_diff_weights+= -self.learning_rate*np.multiply(self.training_weights, np.array([root.predict(feature) for feature in self.training_features]))
 
             # update the bar
             if self.n_trees>=toolbar_width:
@@ -79,7 +79,7 @@ class BoostedInformationTree:
         else:
             return np.array(predictions)
 
-    #self.training_diff_weights+= -self.learning_rate*np.multiply(self.training_weights, np.array([root.predict(feature) for feature in training_features]))
+    #self.training_diff_weights+= -self.learning_rate*np.multiply(self.training_weights, np.array([root.predict(feature) for feature in self.training_features]))
 
 # Issues: 1. Occasional problems with accidental dtype='int' in inputs -> should be float
 #         2. Deal with the pathological case where all delta-FI=0 when splitting. (We don't always want to split) 
