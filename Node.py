@@ -1,12 +1,37 @@
 #!/usr/bin/env python
 # Standard imports
 import numpy as np
-import copy
 import cProfile
 import operator 
 import time
 
-from Analysis.Tools.helpers import chunk
+## https://wiki.python.org/moin/PythonDecoratorLibrary#Memoize
+#class memoized(object):
+#   import functools, collections
+#   '''Decorator. Caches a function's return value each time it is called.
+#   If called later with the same arguments, the cached value is returned
+#   (not reevaluated).
+#   '''
+#   def __init__(self, func):
+#      self.func = func
+#      self.cache = {}
+#   def __call__(self, *args):
+#      if not isinstance(args, collections.Hashable):
+#         # uncacheable. a list, for instance.
+#         # better to not cache than blow up.
+#         return self.func(*args)
+#      if args in self.cache:
+#         return self.cache[args]
+#      else:
+#         value = self.func(*args)
+#         self.cache[args] = value
+#         return value
+#   def __repr__(self):
+#      '''Return the function's docstring.'''
+#      return self.func.__doc__
+#   def __get__(self, obj, objtype):
+#      '''Support instance methods.'''
+#      return functools.partial(self.__call__, obj)
 
 class Node:
     def __init__( self, features, max_depth, min_size, training_weights, training_diff_weights, split_method="python_loop", depth=0):
@@ -201,11 +226,12 @@ class Node:
         # check for max depth or a 'no' split
         if  self.max_depth <= depth+1 or (not any(self.split_left_group)) or all(self.split_left_group): # Jason Brownlee starts counting depth at 1, we start counting at 0, hence the +1
             #print ("Choice2", depth, result_func(self.split_left_group), result_func(~self.split_left_group) )
+            # The split was good, but we stop splitting further. Put everything in the left node! 
+            self.split_value = float('inf')
+            self.left        = ResultNode(**{val:func(np.ones(len(self.features),dtype=bool)) for val, func in result_funcs.iteritems()})
+            self.right       = ResultNode(**{val:func(np.zeros(len(self.features),dtype=bool)) for val, func in result_funcs.iteritems()})
             # The split was good, but we stop splitting further. Put the result of the split in the left/right boxes.
-            #self.left = ResultNode(**{val:func(np.ones(len(self.features),dtype=bool)) for val, func in result_funcs.iteritems()})
-            #self.right = None #ResultNode(**{val:func(~self.split_left_group) for val, func in result_funcs.iteritems()})
-            self.left, self.right = ResultNode(**{val:func(self.split_left_group) for val, func in result_funcs.iteritems()}), ResultNode(**{val:func(~self.split_left_group) for val, func in result_funcs.iteritems()})
-
+            #self.left, self.right = ResultNode(**{val:func(self.split_left_group) for val, func in result_funcs.iteritems()}), ResultNode(**{val:func(~self.split_left_group) for val, func in result_funcs.iteritems()})
             return
         # process left child
         if np.count_nonzero(self.split_left_group) < 2*self.min_size:
@@ -227,6 +253,7 @@ class Node:
             self.right            = Node(self.features[~self.split_left_group], max_depth=self.max_depth, min_size=self.min_size, training_weights = self.training_weights[~self.split_left_group], training_diff_weights = self.training_diff_weights[~self.split_left_group], split_method=self.split_method, depth=self.depth+1 )
 
     # Prediction    
+    #@memoized -> The decorator doesn't work because numpy.ndarrays are not hashable. Hashes are for fast lookup. Maybe it's dangerous to circumvent this with hash(ndarray.tostring())? Niki?
     def predict( self, features, key = 'score'):
         ''' obtain the result by recursively descending down the tree
         '''
@@ -248,6 +275,10 @@ class Node:
             result += node.FI if isinstance(node, ResultNode) else node.total_FI()
         return result
 
+    def get_list(self, key = 'score'):
+        ''' recursively obtain all thresholds '''
+        return [ (self.split_i_feature, self.split_value), self.left.get_list(key), self.right.get_list(key) ] 
+
 class ResultNode:
     ''' Simple helper class to store result value.
     '''
@@ -256,6 +287,11 @@ class ResultNode:
             setattr( self, key, val )
     def print_tree(self, key = 'FI', depth=0):
         print('%s[%s] (%d)' % (((depth)*' ', getattr( self, key), self.size)))
+
+    def get_list( self, key='score'):
+        ''' recursively obtain all thresholds (bottom of recursion)'''
+        return getattr(self, key) 
+
 
 if __name__=="__main__":
 
@@ -316,7 +352,7 @@ if __name__=="__main__":
     print("number of events %d" % len(features))
     tic_overall = time.time()
 
-    max_depth = 4
+    max_depth = 10
 
     information_trees = []
     for split_method in ['python_loop', 'vectorized_split_and_weight_sums']:
