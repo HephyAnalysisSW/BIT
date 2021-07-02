@@ -103,12 +103,14 @@ class Node:
         '''
 
         # loop over the features ... assume the features consists of rows with [x1, x2, ...., xN]
-        self.split_i_feature, self.split_value, self.split_gain, self.split_left_group = None, float('nan'), 0, None
+        self.split_i_feature, self.split_value, self.split_gain, self.split_left_group = 0, -float('inf'), 0, None
 
         # for a valid binary split, we need at least twice the mean size
         assert self.size >= 2*self.min_size
 
         # loop over features
+
+        #print "self.features",self.features
         for i_feature in range(len(self.features[0])):
             feature_values = self.features[:,i_feature]
 
@@ -150,12 +152,14 @@ class Node:
         '''
 
         # loop over the features ... assume the features consists of rows with [x1, x2, ...., xN]
-        self.split_i_feature, self.split_value, self.split_gain, self.split_left_group = None, float('nan'), 0, None
+        self.split_i_feature, self.split_value, self.split_gain, self.split_left_group = 0, -float('inf'), 0, None
 
         # for a valid binary split, we need at least twice the mean size
         assert self.size >= 2*self.min_size
 
         # loop over features
+        #print "len(self.features[0]))",len(self.features[0])
+
         for i_feature in range(len(self.features[0])):
             feature_values = self.features[:,i_feature]
 
@@ -187,7 +191,7 @@ class Node:
                 self.split_gain     = gain
 
         assert not np.isnan(self.split_value)
-        self.split_left_group = self.features[:,self.split_i_feature]<=self.split_value
+        self.split_left_group = self.features[:,self.split_i_feature]<=self.split_value if not  np.isnan(self.split_value) else np.ones(len(self.features), dtype='bool')
 
     def find_split_vectorized(self, sorted_weight_sums, sorted_weight_diff_sums, plateau_and_split_range_mask):
         total_weight_sum         = sorted_weight_sums[-1]

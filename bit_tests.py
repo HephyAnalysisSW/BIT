@@ -27,12 +27,12 @@ max_score_theory = score_theory.Eval(420)
 min_score_theory = score_theory.Eval(20)
 make_log  = True
 n_events      = 100000
-n_trees       = 100
-learning_rate = 0.2 
-max_depth     = 3
+n_trees       = 150
+learning_rate = .2 
+max_depth     = 2
 min_size      = 50
-n_plot        = 10 # Plot every tenth
-id_   = "power-law-OT-nTrees%i"%n_trees
+n_plot        = 5 
+id_   = "power-law-OT-nTrees%i-LR%f"%(n_trees, learning_rate)
 def get_dataset( n_events ):
     features = np.array( [ [model.GetRandom(20, 420)] for i in range(n_events)] )
     weights       = np.array( [1 for i in range(n_events)] ) 
@@ -40,19 +40,21 @@ def get_dataset( n_events ):
     return features, weights, diff_weights
 
 
-# (pT/pT0)^(theta) pT^(-alpha) -> the score is Log[pT/pT0]
+## (pT/pT0)^(theta) pT^(-alpha) -> the score is Log[pT/pT0]
 #id_       = "flat"
 #model     = ROOT.TF1("model", "1", 20, 1000)
 #theta     = 0.1
-#max_depth = 1
+#max_depth = 2
 #pT0       = 220 # model parameter
+#min_size  = 50
 #score_theory = ROOT.TF1("score_theory", "(x>={pT0})".format(pT0=pT0), 20, 420)
 #max_score_theory = score_theory.Eval(420)
 #min_score_theory = score_theory.Eval(20)
 #make_log  = False
 #n_events      = 100000
-#n_trees       = 1
-#learning_rate = 0.5
+#n_trees       = 50
+#n_plot        = 10
+#learning_rate = 0.1
 #def get_dataset( n_events ):
 #    ''' Produces data set according to theory model'''
 #    features = np.array( [ [model.GetRandom(20, 420)] for i in range(n_events)] )
@@ -121,7 +123,7 @@ bit = BoostedInformationTree(
         training_weights      = training_weights, 
         training_diff_weights = training_diff_weights, 
         learning_rate = learning_rate, 
-        n_trees = n_trees, max_depth=max_depth, min_size=min_size )
+        n_trees = n_trees, max_depth=max_depth, min_size=min_size, split_method='python_loop')
 
 bit.boost()
 
