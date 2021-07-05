@@ -20,27 +20,29 @@ from user import plot_directory
 
 ## power law
 ## (pT/pT0)^(theta) pT^(-alpha) -> the score is Log[pT/pT0]
-model = ROOT.TF1("model", "x^(-3)", 20, 1000)
-theta = 0.2
-score_theory = ROOT.TF1("score_theory", "log(x/100.)", 20, 420)
-max_score_theory = score_theory.Eval(420)
-min_score_theory = score_theory.Eval(20)
-make_log  = True
-n_events      = 100000
-n_trees       = 150
-learning_rate = .2 
-max_depth     = 2
-min_size      = 50
-n_plot        = 5 
-id_   = "power-law-OT-nTrees%i-LR%f"%(n_trees, learning_rate)
-def get_dataset( n_events ):
-    features = np.array( [ [model.GetRandom(20, 420)] for i in range(n_events)] )
-    weights       = np.array( [1 for i in range(n_events)] ) 
-    diff_weights  = np.array( [ (features[i][0]/100.)**theta*log(features[i][0]/100.) for i in range(n_events)] )
-    return features, weights, diff_weights
+#xmin  = 20
+#xmax  = 420 
+#theta = 0.2
+#model = ROOT.TF1("model", "x^(-3)", xmin,xmax)
+#score_theory = ROOT.TF1("score_theory", "1/2.-log(x/100.)", xmin, xmax)
+#min_score_theory = min( score_theory.Eval(xmin), score_theory.Eval(xmax) )
+#max_score_theory = max( score_theory.Eval(xmin), score_theory.Eval(xmax) ) 
+#make_log  = True
+#n_events      = 100000
+#n_trees       = 150
+#learning_rate = .5 
+#max_depth     = 2
+#min_size      = 50
+#n_plot        = 10 
+#id_   = "power-law-OT-nTrees%i-LR%3.2f-pT%iTo%i"%(n_trees, learning_rate, xmin, xmax)
+#def get_dataset( n_events ):
+#    features = np.array( [ [model.GetRandom(xmin, xmax)] for i in range(n_events)] )
+#    weights       = np.array( [1 for i in range(n_events)] ) 
+#    #diff_weights  = np.array( [ (features[i][0]/100.)**theta*log(features[i][0]/100.) for i in range(n_events)] )
+#    diff_weights  = np.array( [ 1./(3-1) - log(features[i][0]/100.) for i in range(n_events)] )
+#    return features, weights, diff_weights
 
 
-## (pT/pT0)^(theta) pT^(-alpha) -> the score is Log[pT/pT0]
 #id_       = "flat"
 #model     = ROOT.TF1("model", "1", 20, 1000)
 #theta     = 0.1
@@ -66,38 +68,41 @@ def get_dataset( n_events ):
 
 # Definition of the model
 ## exponential
-## Exp[-pT/pT0] -> the score is pT/(pT0*(1+theta)**2)
-#pT0=25.
-#model = ROOT.TF1("model", "exp(-x/{pT0})*exp({pT0}/20.)".format(pT0=pT0), 20, 1000)
-#theta = 0.1
-#score_theory = ROOT.TF1("score_theory", "x/({pT0}*(1+{theta})**2)".format(pT0=pT0,theta=theta), 20, 420)
-#max_score_theory = score_theory.Eval(420)
-#min_score_theory = score_theory.Eval(20)
+pT0=25.
+alpha=1./100
+xmin  = 20
+xmax  = 420 
+model = ROOT.TF1("model", "1./{alpha}*exp(-{alpha}*(x-{pT0}))".format(pT0=pT0, alpha=alpha), xmin, xmax)
+theta = 0.001
+score_theory = ROOT.TF1("score_theory", "1./{alpha}-(x-{pT0})".format(pT0=pT0, alpha=alpha), xmin, xmax)
+min_score_theory = min( score_theory.Eval(xmin), score_theory.Eval(xmax) )
+max_score_theory = max( score_theory.Eval(xmin), score_theory.Eval(xmax) ) 
 
-#make_log  = True
-#n_events      = 100000
-#n_trees       = 100
-#learning_rate = 0.2 
-#max_depth     = 2
-#min_size      = 50
-#n_plot = 10 # Plot every tenth
-#
-#weighted = False
-#id_   = "pT0%i-nTrees%i-exponential"%(pT0, n_trees)
-#if weighted:id_+='-weighted'
-#
-#def get_sampled_dataset( n_events ):
-#    features = np.array( [ [model.GetRandom(20, 420)] for i in range(n_events)] )
-#    weights       = np.array( [1 for i in range(n_events)] ) 
-#    diff_weights  = np.array( [ features[i][0]/(pT0*(1+theta)**2)*exp(features[i][0]*theta/(pT0*(1+theta))) for i in range(n_events)] )
-#    return features, weights, diff_weights
-#def get_weighted_dataset( n_events ):
-#    features = np.array( [ [20+random.random()*400] for i in range(n_events)] )
-#    weights       = np.array( [ model.Eval(features[i][0]) for i in range(n_events)] ) 
-#    diff_weights  = np.array( [ weights[i]*features[i][0]/(pT0*(1+theta)**2)*exp(features[i][0]*theta/(pT0*(1+theta))) for i in range(n_events)] )
-#    return features, weights, diff_weights
-#
+make_log  = True
+n_events      = 100000
+n_trees       = 100
+learning_rate = 0.2 
+max_depth     = 2
+min_size      = 50
+n_plot = 10 # Plot every tenth
+
+weighted = False
+id_   = "pT0%i-nTrees%i-exponential"%(pT0, n_trees)
+if weighted:id_+='-weighted'
+
+def get_sampled_dataset( n_events ):
+    features = np.array( [ [model.GetRandom(xmin, xmax)] for i in range(n_events)] )
+    weights       = np.array( [1 for i in range(n_events)] ) 
+    diff_weights  = np.array( [ (1./alpha - (features[i][0]-pT0)) for i in range(n_events)] )
+    return features, weights, diff_weights
+def get_weighted_dataset( n_events ):
+    features = np.array( [ [xmin+random.random()*(xmax-xmin)] for i in range(n_events)] )
+    weights       = np.array( [ model.Eval(features[i][0]) for i in range(n_events)] ) 
+    diff_weights  = np.array( [ weights[i]*(1./alpha - (features[i][0]-pT0)) for i in range(n_events)] )
+    return features, weights, diff_weights
+
 #get_dataset = get_weighted_dataset 
+get_dataset = get_sampled_dataset 
 
 # Produce training data set
 training_features, training_weights, training_diff_weights = get_dataset( n_events )
@@ -136,11 +141,13 @@ def score_histo( bit, max_n_tree = None):
 
 score_theory.SetLineColor(ROOT.kRed)
 score_theory.Draw()
+#score_theory.GetYaxis().SetRangeUser(.4, 2)
+score_theory.GetYaxis().SetRangeUser(min_score_theory, max_score_theory)
 counter=0
 for n_tree in range(bit.n_trees):
     if bit.n_trees<=n_plot or n_tree%(bit.n_trees/n_plot)==0:
         fitted = score_histo( bit, max_n_tree = n_tree ) 
-        fitted.SetLineColor(ROOT.kBlue+counter)
+        fitted.SetLineColor(2+counter)
         fitted.GetYaxis().SetRangeUser(min_score_theory, max_score_theory)
         fitted.DrawCopy("HISTsame")
         counter+=1

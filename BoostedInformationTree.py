@@ -53,7 +53,6 @@ class BoostedInformationTree:
             #histo = score_histo(root)
             # Except for the last node, only take a fraction of the score
 
-            #histo.Scale(learning_rate)
             # reduce the score
             self.training_diff_weights+= -self.learning_rate*np.multiply(self.training_weights, np.array([root.predict(feature) for feature in self.training_features]))
 
@@ -64,24 +63,9 @@ class BoostedInformationTree:
 
         sys.stdout.write("]\n") # this ends the progress bar
 
-    #def calibrated( self ):
-    #    if hasattr( self, "calibration"):
-    #        minimum, maximum = self.calibration
-    #    else:
-    #        flatten( [ map( lambda tree: tree.get_list(only_threshold=True)
-    #         
-        
     def predict( self, feature_array, max_n_tree = None, summed = True):
-        #return self.calibrated( sum( [ self.learning_rate*tree.predict( feature_array ) for tree in self.trees[:max_n_tree] ], 0. ) )
         predictions = [ self.learning_rate*tree.predict( feature_array ) for tree in self.trees[:max_n_tree] ]
         if summed: 
             return sum( predictions, 0. )
         else:
             return np.array(predictions)
-
-    #self.training_diff_weights+= -self.learning_rate*np.multiply(self.training_weights, np.array([root.predict(feature) for feature in self.training_features]))
-
-# Issues: 1. Occasional problems with accidental dtype='int' in inputs -> should be float
-#         2. Deal with the pathological case where all delta-FI=0 when splitting. (We don't always want to split) 
-#            --> should be done by accepting such fplits with <=float('inf'), but maybe needs check
-#         3. Clean up dependencies ?
