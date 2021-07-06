@@ -5,6 +5,7 @@ import numpy as np
 import random
 import cProfile
 import time
+import os
 
 from math import log, exp
 import Analysis.Tools.syncer
@@ -12,7 +13,6 @@ import ROOT
 
 from BoostedInformationTree import BoostedInformationTree
 
-from user import plot_directory
 
 import time
 
@@ -41,7 +41,16 @@ c1 = ROOT.TCanvas()
 h_BSM.Draw("HIST")
 h_SM.Draw("HISTsame")
 c1.SetLogy(model.make_log)
-c1.Print("%s/model_%s.png"%(plot_directory,model.id_string))
+
+
+# directory for plots
+from user import plot_directory as user_plot_directory
+plot_directory = os.path.join( user_plot_directory, model.id_string )
+
+if not os.path.isdir(plot_directory):
+    os.makedirs( plot_directory )
+
+c1.Print(os.path.join(plot_directory, "model.png"))
 
 time1 = time.time()
 
@@ -67,6 +76,8 @@ bit.boost()
 time2 = time.time()
 boosting_time = time2 - time1
 
+print "Boosting time: %.2f seconds" % boosting_time
+
 # Make a histogram from the score function (1D)
 def score_histo( bit, max_n_tree = None):
     h = ROOT.TH1F("h", "h", 400, 20, 420)
@@ -91,7 +102,7 @@ fitted = score_histo( bit )
 fitted.SetLineColor(ROOT.kBlack)
 fitted.Draw("HISTsame")
 c1.SetLogy(0)
-c1.Print("%s/score_boosted_%s.png"%(plot_directory,model.id_string))
+c1.Print(os.path.join(plot_directory, "score_boosted.png"))
 
 test_features, test_weights, test_diff_weights = model.get_dataset( n_events )
 
@@ -157,7 +168,7 @@ training_profile.Draw("hist")
 test_profile.Draw("histsame")
 training_BSM_profile.Draw("histsame")
 test_BSM_profile.Draw("histsame")
-c1.Print("%s/score_profile_validation_profile_%s.png"%(plot_directory,model.id_string))
+c1.Print(os.path.join(plot_directory, "score_profile_validation_profile.png"))
 
 training.SetLineColor(ROOT.kBlue)
 test    .SetLineColor(ROOT.kBlue)
@@ -185,7 +196,7 @@ l.SetFillStyle(0)
 l.SetShadowColor(ROOT.kWhite)
 l.SetBorderSize(0)
 l.Draw()
-c1.Print("%s/score_validation_%s.png"%(plot_directory,model.id_string))
+c1.Print(os.path.join(plot_directory, "score_validation.png"))
 
 
 for name, test_FIs_, training_FIs_ in [
@@ -217,6 +228,5 @@ for name, test_FIs_, training_FIs_ in [
     l.SetBorderSize(0)
     l.Draw()
     c1.SetLogy(0)
-    c1.Print("%s/FI_evolution_%s_%s.png"%(plot_directory,model.id_string,name))
+    c1.Print(os.path.join(plot_directory, "FI_evolution_%s.png"%name))
 
-print "Boosting time: %.2f seconds" % boosting_time
