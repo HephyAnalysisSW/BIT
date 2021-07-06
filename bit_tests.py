@@ -18,6 +18,8 @@ from BoostedInformationTree import BoostedInformationTree
 
 from user import plot_directory
 
+import time
+
 ## power law
 ## (pT/pT0)^(theta) pT^(-alpha) -> the score is Log[pT/pT0]
 #xmin  = 20
@@ -123,14 +125,22 @@ h_SM.Draw("HISTsame")
 c1.SetLogy(make_log)
 c1.Print("%s/model_%s.png"%(plot_directory,id_))
 
+time1 = time.time()
+
 bit = BoostedInformationTree(
         training_features = training_features,
         training_weights      = training_weights, 
         training_diff_weights = training_diff_weights, 
         learning_rate = learning_rate, 
-        n_trees = n_trees, max_depth=max_depth, min_size=min_size, split_method='python_loop')
+        n_trees = n_trees,
+        max_depth=max_depth,
+        min_size=min_size,
+        split_method='vectorized_split_and_weight_sums',
+        weights_update_method='vectorized')
 
 bit.boost()
+time2 = time.time()
+boosting_time = time2 - time1
 
 # Make a histogram from the score function (1D)
 def score_histo( bit, max_n_tree = None):
@@ -283,6 +293,8 @@ for name, test_FIs_, training_FIs_ in [
     l.Draw()
     c1.SetLogy(0)
     c1.Print("%s/FI_evolution_%s_%s.png"%(plot_directory,id_,name))
+
+print "Boosting time: %.2f seconds" % boosting_time
 
 # Let's fit a single tree with different depths
 #for depth in range(1,4):

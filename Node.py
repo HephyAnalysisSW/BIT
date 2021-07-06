@@ -235,6 +235,37 @@ class Node:
         else:
             return node.predict(features, key=key)
 
+    def vectorized_weights_update_delta(self, weights, feature_matrix, key='score'):
+        """Create numpy logical expressions from all paths to results nodes, associate with score, and perform summed predictions via numpy.
+           Should be faster for shallow trees due to numpy being implemented in C, despite going over feature vectors multiple times."""
+        
+        emmitted_expressions_with_scores = []
+
+        def emit_expressions_with_scores(node, logical_expression):
+            if isinstance(node, ResultNode):
+                emmitted_expressions_with_scores.append((logical_expression, getattr(node, key)))
+            else:
+                if node == self:
+                    prepend = ""
+                else:
+                    prepend = " & "
+                if np.isinf(node.split_value):
+                    split_value_str = 'np.inf'
+                else:
+                    split_value_str = str(node.split_value)
+                emit_expressions_with_scores(node.left, logical_expression + "%s(feature_matrix[:,%d] <= %s)" % (prepend, node.split_i_feature, split_value_str))
+                emit_expressions_with_scores(node.right, logical_expression + "%s(feature_matrix[:,%d] > %s)" % (prepend, node.split_i_feature, split_value_str))
+        
+        emit_expressions_with_scores(self, "")
+        prediction_scores = np.zeros(len(weights))
+
+        for expression, score in emmitted_expressions_with_scores:
+            prediction_scores[eval(expression)] = score
+    
+        #print(prediction_scores)
+        weights_update_delta = np.multiply(weights, prediction_scores)
+        return weights_update_delta
+
     # Print a decision tree
     def print_tree(self, key = 'FI', depth=0):
         print('%s[X%d <= %.3f]' % ((self.depth*' ', self.split_i_feature, self.split_value)))
