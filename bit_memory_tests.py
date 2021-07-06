@@ -18,7 +18,10 @@ from BoostedInformationTree import BoostedInformationTree
 
 from user import plot_directory
 
-import time
+from guppy import hpy
+
+heap = hpy()
+
 
 ## power law
 ## (pT/pT0)^(theta) pT^(-alpha) -> the score is Log[pT/pT0]
@@ -45,67 +48,66 @@ import time
 #    return features, weights, diff_weights
 
 
-id_       = "flat"
-xmin      = 0
-pT0       = 200 
-xmax      = 2*pT0
-model     = ROOT.TF1("model", "1", xmin, xmax)
-theta     = 0.1
-max_depth = 2
-min_size  = 50
-score_theory = ROOT.TF1("score_theory", "-1./(2+{alpha})+1./(1+{alpha})*(x>{pT0})".format(alpha=1, pT0=pT0), xmin, xmax)
+#id_       = "flat"
+#model     = ROOT.TF1("model", "1", 20, 1000)
+#theta     = 0.1
+#max_depth = 2
+#pT0       = 220 # model parameter
+#min_size  = 50
+#score_theory = ROOT.TF1("score_theory", "(x>={pT0})".format(pT0=pT0), 20, 420)
+#max_score_theory = score_theory.Eval(420)
+#min_score_theory = score_theory.Eval(20)
+#make_log  = False
+#n_events      = 100000
+#n_trees       = 50
+#n_plot        = 10
+#learning_rate = 0.1
+#def get_dataset( n_events ):
+#    ''' Produces data set according to theory model'''
+#    features = np.array( [ [model.GetRandom(20, 420)] for i in range(n_events)] )
+#    weights       = np.array( [ 1. for i in range(n_events)] ) 
+#    diff_weights  = np.array( [ 0. if features[i]<pT0 else 1 for i in range(n_events)] )
+#    return features, weights, diff_weights
+
+        
+
+# Definition of the model
+## exponential
+pT0=25.
+alpha=1./100
+xmin  = 20
+xmax  = 420 
+model = ROOT.TF1("model", "1./{alpha}*exp(-{alpha}*(x-{pT0}))".format(pT0=pT0, alpha=alpha), xmin, xmax)
+theta = 0.001
+score_theory = ROOT.TF1("score_theory", "1./{alpha}-(x-{pT0})".format(pT0=pT0, alpha=alpha), xmin, xmax)
 min_score_theory = min( score_theory.Eval(xmin), score_theory.Eval(xmax) )
 max_score_theory = max( score_theory.Eval(xmin), score_theory.Eval(xmax) ) 
-make_log  = False
-n_events      = 10000
-n_trees       = 20
-n_plot        = 5
-learning_rate = 0.1
-def get_dataset( n_events ):
-    ''' Produces data set according to theory model'''
+
+make_log  = True
+n_events      = 100000
+n_trees       = 1000
+learning_rate = 0.2 
+max_depth     = 2
+min_size      = 50
+n_plot = 10 # Plot every tenth
+
+weighted = False
+id_   = "pT0%i-nTrees%i-exponential"%(pT0, n_trees)
+if weighted:id_+='-weighted'
+
+def get_sampled_dataset( n_events ):
     features = np.array( [ [model.GetRandom(xmin, xmax)] for i in range(n_events)] )
-    weights       = np.array( [ 1. for i in range(n_events)] ) 
-    diff_weights  = np.array( [ -1/3.+ (1/2. if features[i]>pT0 else 0) for i in range(n_events)] )
+    weights       = np.array( [1 for i in range(n_events)] ) 
+    diff_weights  = np.array( [ (1./alpha - (features[i][0]-pT0)) for i in range(n_events)] )
+    return features, weights, diff_weights
+def get_weighted_dataset( n_events ):
+    features = np.array( [ [xmin+random.random()*(xmax-xmin)] for i in range(n_events)] )
+    weights       = np.array( [ model.Eval(features[i][0]) for i in range(n_events)] ) 
+    diff_weights  = np.array( [ weights[i]*(1./alpha - (features[i][0]-pT0)) for i in range(n_events)] )
     return features, weights, diff_weights
 
-
-## Definition of the model
-### exponential
-#pT0=25.
-#alpha=1./100
-#xmin  = 20
-#xmax  = 420 
-#model = ROOT.TF1("model", "1./{alpha}*exp(-{alpha}*(x-{pT0}))".format(pT0=pT0, alpha=alpha), xmin, xmax)
-#theta = 0.001
-#score_theory = ROOT.TF1("score_theory", "1./{alpha}-(x-{pT0})".format(pT0=pT0, alpha=alpha), xmin, xmax)
-#min_score_theory = min( score_theory.Eval(xmin), score_theory.Eval(xmax) )
-#max_score_theory = max( score_theory.Eval(xmin), score_theory.Eval(xmax) ) 
-#
-#make_log  = True
-#n_events      = 100000
-#n_trees       = 100
-#learning_rate = 0.2 
-#max_depth     = 2
-#min_size      = 50
-#n_plot = 10 # Plot every tenth
-#
-#weighted = False
-#id_   = "pT0%i-nTrees%i-exponential"%(pT0, n_trees)
-#if weighted:id_+='-weighted'
-#
-#def get_sampled_dataset( n_events ):
-#    features = np.array( [ [model.GetRandom(xmin, xmax)] for i in range(n_events)] )
-#    weights       = np.array( [1 for i in range(n_events)] ) 
-#    diff_weights  = np.array( [ (1./alpha - (features[i][0]-pT0)) for i in range(n_events)] )
-#    return features, weights, diff_weights
-#def get_weighted_dataset( n_events ):
-#    features = np.array( [ [xmin+random.random()*(xmax-xmin)] for i in range(n_events)] )
-#    weights       = np.array( [ model.Eval(features[i][0]) for i in range(n_events)] ) 
-#    diff_weights  = np.array( [ weights[i]*(1./alpha - (features[i][0]-pT0)) for i in range(n_events)] )
-#    return features, weights, diff_weights
-#
-##get_dataset = get_weighted_dataset 
-#get_dataset = get_sampled_dataset 
+#get_dataset = get_weighted_dataset 
+get_dataset = get_sampled_dataset 
 
 # Produce training data set
 training_features, training_weights, training_diff_weights = get_dataset( n_events )
@@ -126,22 +128,18 @@ h_SM.Draw("HISTsame")
 c1.SetLogy(make_log)
 c1.Print("%s/model_%s.png"%(plot_directory,id_))
 
-time1 = time.time()
-
+heap_status1 = heap.heap()
 bit = BoostedInformationTree(
         training_features = training_features,
         training_weights      = training_weights, 
         training_diff_weights = training_diff_weights, 
         learning_rate = learning_rate, 
-        n_trees = n_trees,
-        max_depth=max_depth,
-        min_size=min_size,
-        split_method='vectorized_split_and_weight_sums',
-        weights_update_method='vectorized')
+        n_trees = n_trees, max_depth=max_depth, min_size=min_size, split_method='python_loop')
 
 bit.boost()
-time2 = time.time()
-boosting_time = time2 - time1
+heap_status2 = heap.heap()
+print "\nHeap Change After Boosting : %.2f MB" % (float(heap_status2.size - heap_status1.size)/(1024*1024))
+
 
 # Make a histogram from the score function (1D)
 def score_histo( bit, max_n_tree = None):
@@ -190,6 +188,8 @@ test_FIs_lowPt     = np.zeros(n_trees)
 training_FIs_lowPt = np.zeros(n_trees)
 test_FIs_highPt     = np.zeros(n_trees)
 training_FIs_highPt = np.zeros(n_trees)
+
+heap_status1 = heap.heap()
 for i in range(n_events):
     test_scores     = bit.predict( test_features[i], summed = False)
     training_scores = bit.predict( training_features[i], summed = False)
@@ -217,6 +217,9 @@ for i in range(n_events):
         test_FIs_highPt         += test_diff_weights[i]*test_scores          
     if training_features[i][0]>200:
         training_FIs_highPt     += training_diff_weights[i]*training_scores 
+heap_status2 = heap.heap()
+print "\nHeap Change After Prediction : %.2f MB" % (int(heap_status2.size - heap_status1.size)/(1024*1024))
+
 
 training_profile.SetLineColor(ROOT.kRed)
 test_profile    .SetLineColor(ROOT.kBlue)
@@ -294,8 +297,6 @@ for name, test_FIs_, training_FIs_ in [
     l.Draw()
     c1.SetLogy(0)
     c1.Print("%s/FI_evolution_%s_%s.png"%(plot_directory,id_,name))
-
-print "Boosting time: %.2f seconds" % boosting_time
 
 # Let's fit a single tree with different depths
 #for depth in range(1,4):
