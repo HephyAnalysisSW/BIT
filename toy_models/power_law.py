@@ -4,6 +4,8 @@
 import numpy as np
 import ROOT
 
+from math import log
+
 # power law
 # (pT/pT0)^(theta) pT^(-alpha) -> the score is Log[pT/pT0]
 xmin  = 20
