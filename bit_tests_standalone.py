@@ -7,12 +7,13 @@ import cProfile
 import time
 from BoostedInformationTree import BoostedInformationTree
 
+data_dir = 'data'
 
-training_features = np.loadtxt('training_features_power_law_model.txt.gz')
-training_features = training_features.reshape(training_features.shape[0], 1)
+training_features = np.loadtxt('%s/training_features_power_law_model.txt.gz' % data_dir)
+training_features = training_features.reshape(training_features.shape[0], -1)
 print(training_features.shape)
-training_weights = np.loadtxt('training_weights_power_law_model.txt.gz')
-training_diff_weights = np.loadtxt('training_diff_weights_power_law_model.txt.gz')
+training_weights = np.loadtxt('%s/training_weights_power_law_model.txt.gz' % data_dir)
+training_diff_weights = np.loadtxt('%s/training_diff_weights_power_law_model.txt.gz' % data_dir)
 
 learning_rate = 0.02
 n_trees       = 100
