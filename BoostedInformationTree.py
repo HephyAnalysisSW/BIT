@@ -3,6 +3,7 @@
 import cProfile
 import sys
 import time
+import pickle
 
 import numpy as np
 
@@ -29,6 +30,16 @@ class BoostedInformationTree:
 
         # Will hold the trees
         self.trees                  = []
+
+    @classmethod
+    def load(cls, filename):
+        old_instance = pickle.load(file( filename ))
+        new_instance = cls( None, None, None, n_trees = old_instance.n_trees, learning_rate = old_instance.learning_rate, weights_update_method = old_instance.weights_update_method)
+        new_instance.trees = old_instance.trees
+        return new_instance  
+
+    def save(self, filename):
+        pickle.dump( self, file( filename, 'w' ) )
 
     def boost( self ):
 
@@ -84,6 +95,11 @@ class BoostedInformationTree:
         sys.stdout.write("]\n") # this ends the progress bar
         print "weak learner time: %.2f" % weak_learner_time
         print "update time: %.2f" % update_time
+
+        # purge training data
+        self.training_weights       
+        self.training_diff_weights  
+        self.training_features      
 
     # TODO: respect vectorized predict option
     def predict( self, feature_array, max_n_tree = None, summed = True):
