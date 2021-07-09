@@ -26,9 +26,6 @@ from RootTools.plot.helpers    import copyIndexPHP
 # BIT
 from BoostedInformationTree import BoostedInformationTree
 
-# Plot helpers
-from plot_helpers import plot2DHist
-
 # User
 from user import plot_directory as user_plot_directory
 
