@@ -14,6 +14,7 @@ xmin  = 20
 xmax  = 420 
 ymin  = 20
 ymax  = 420 
+texX  = "p_{T} [GeV]"
 model            = ROOT.TF2("model", "1./{alpha}*exp(-{alpha}*(sqrt(x**2+y**2)-{pT0}))".format(pT0=pT0, alpha=alpha), xmin, xmax, ymin, ymax)
 score_theory     = ROOT.TF2("score_theory", "1./{alpha}-(sqrt(x**2+y**2)-{pT0})".format(pT0=pT0, alpha=alpha), xmin, xmax, ymin, ymax)
 min_score_theory = min( score_theory.Eval(xmin, ymin), score_theory.Eval(xmax, ymax) )
