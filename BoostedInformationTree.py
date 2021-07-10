@@ -78,7 +78,7 @@ class BoostedInformationTree:
             if self.weights_update_method == "python_loop":
                 weights_update_delta = np.multiply(self.training_weights, np.array([root.predict(feature) for feature in self.training_features]))
             elif self.weights_update_method == "vectorized":
-                weights_update_delta = root.vectorized_weights_update_delta(self.training_weights, self.training_features)
+                weights_update_delta = np.multiply(self.training_weights, root.vectorized_predict(self.training_features, key='score'))
             else:
                 raise ValueError("weights update method %s unknown" % self.weights_update_method)
             self.training_diff_weights+= -self.learning_rate*weights_update_delta
@@ -101,10 +101,16 @@ class BoostedInformationTree:
         self.training_diff_weights  
         self.training_features      
 
-    # TODO: respect vectorized predict option
-    def predict( self, feature_array, max_n_tree = None, summed = True):
-        predictions = [ self.learning_rate*tree.predict( feature_array ) for tree in self.trees[:max_n_tree] ]
-        if summed: 
-            return sum( predictions, 0. )
+    def predict( self, feature_array, max_n_tree = None, summed = True, vectorized = False):
+        if vectorized:
+            predictions = [ self.learning_rate*tree.vectorized_predict( feature_array ) for tree in self.trees[:max_n_tree] ]
+        else:    
+            predictions = [ self.learning_rate*tree.predict( feature_array ) for tree in self.trees[:max_n_tree] ]
+
+        if summed:
+            if vectorized:
+                return np.sum(predictions, axis=0)
+            else: 
+                return sum( predictions, 0. )
         else:
             return np.array(predictions)
