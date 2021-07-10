@@ -94,7 +94,7 @@ c1 = ROOT.TCanvas()
 model.score_theory.GetXaxis().SetRangeUser(model.xmin, model.xmax)
 model.score_theory.GetYaxis().SetRangeUser(model.ymin, model.ymax)
 counter=0
-for n_tree in [1, 2, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]:
+for n_tree in [1, 2, 5, 10, 20, 30, 40, 50, 80, 100, 200, 1000]:
 
     print "n_tree", n_tree
     fitted = score_histo( bit, max_n_tree = n_tree ) 

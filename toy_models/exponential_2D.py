@@ -20,9 +20,9 @@ min_score_theory = min( score_theory.Eval(xmin, ymin), score_theory.Eval(xmax, y
 max_score_theory = max( score_theory.Eval(xmin, ymin), score_theory.Eval(xmax, ymax) ) 
 
 make_log  = True
-n_events      = 100000
-n_trees       = 100
-learning_rate = 0.2 
+n_events      = 2000000
+n_trees       = 500
+learning_rate = 0.1 
 max_depth     = 2
 min_size      = 50
 n_plot = 10 # Plot every tenth
@@ -42,11 +42,11 @@ def get_sampled_dataset( n_events ):
     diff_weights  = np.array( [ (1./alpha - (sqrt(features[i][0]**2+features[i][1]**2)-pT0)) for i in range(n_events)] )
     return features, weights, diff_weights
 
-#def get_weighted_dataset( n_events ):
-#    features = np.array( [ [xmin+random.random()*(xmax-xmin)] for i in range(n_events)] )
-#    weights       = np.array( [ model.Eval(features[i][0]) for i in range(n_events)] ) 
-#    diff_weights  = np.array( [ weights[i]*(1./alpha - (features[i][0]-pT0)) for i in range(n_events)] )
-#    return features, weights, diff_weights
+def get_weighted_dataset( n_events ):
+    features = np.array( [ [xmin+random.random()*(xmax-xmin), ymin+random.random()*(ymax-ymin)] for i in range(n_events)] )
+    weights       = np.array( [ model.Eval(features[i][0],features[i][1]) for i in range(n_events)] ) 
+    diff_weights  = np.array( [ weights[i]*(1./alpha - (sqrt(features[i][0]**2+features[i][1]**2)-pT0)) for i in range(n_events)] )
+    return features, weights, diff_weights
 
-#get_dataset = get_weighted_dataset 
-get_dataset = get_sampled_dataset 
+get_dataset = get_weighted_dataset 
+#get_dataset = get_sampled_dataset 
