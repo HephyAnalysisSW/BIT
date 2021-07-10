@@ -44,11 +44,11 @@ class TestBIT(unittest.TestCase):
 
                 training_FI_20 = np.dot(training_diff_weights, predicted_scores_20)
                 print "training FI_20: %f" % training_FI_20
-                self.assertAlmostEqual(278353.986701, training_FI_20)
+                self.assertAlmostEqual(278353.1436750, training_FI_20)
 
                 training_FI_100 = np.dot(training_diff_weights, predicted_scores_100)
                 print "training FI_100: %f" % training_FI_100
-                self.assertAlmostEqual(284127.8915964808, training_FI_100)
+                self.assertAlmostEqual(284138.66016375029, training_FI_100)
 
                 # now the same predictions vectorized
                 predicted_scores_20 = bit.predict(training_features, max_n_tree=20, vectorized=True)
@@ -60,11 +60,11 @@ class TestBIT(unittest.TestCase):
 
                 training_FI_20 = np.dot(training_diff_weights, predicted_scores_20)
                 print "training FI_20: %f" % training_FI_20
-                #self.assertAlmostEqual(278353.986701, training_FI_20)
+                self.assertAlmostEqual(278353.1436750, training_FI_20)
 
                 training_FI_100 = np.dot(training_diff_weights, predicted_scores_100)
                 print "training FI_100: %f" % training_FI_100
-                #self.assertAlmostEqual(284127.8915964808, training_FI_100)
+                self.assertAlmostEqual(284138.66016375029, training_FI_100)
 
 if __name__ == '__main__':
     unittest.main()

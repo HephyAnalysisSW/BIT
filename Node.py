@@ -252,7 +252,7 @@ class Node:
                 if np.isinf(node.split_value):
                     split_value_str = 'np.inf'
                 else:
-                    split_value_str = str(node.split_value)
+                    split_value_str = format(node.split_value, '.32f')
                 emit_expressions_with_predictions(node.left, logical_expression + "%s(feature_matrix[:,%d] <= %s)" % (prepend, node.split_i_feature, split_value_str))
                 emit_expressions_with_predictions(node.right, logical_expression + "%s(feature_matrix[:,%d] > %s)" % (prepend, node.split_i_feature, split_value_str))
         
