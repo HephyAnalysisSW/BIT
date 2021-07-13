@@ -10,6 +10,8 @@ elif os.environ['USER'] in ['dennis.schwarz']:
     plot_directory                      = "/mnt/hephy/cms/dennis.schwarz/www/BIT/"
 elif os.environ['USER'] in ['suman.chatterjee']:
 	plot_directory                      = "/mnt/hephy/cms/suman.chatterjee/www/BIT/"
+elif os.environ['USER'] in ['lukas.lechner']:
+	plot_directory                      = "/mnt/hephy/cms/lukas.lechner/www/BIT/"
 else:
     print "New user %s. Please add plot_directory in user.py" % os.environ['USER']
     plot_directory = "."

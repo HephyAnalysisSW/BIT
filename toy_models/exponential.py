@@ -11,6 +11,7 @@ pT0   = 25.
 alpha = 1./100
 xmin  = 20
 xmax  = 420 
+texX  = "p_{T} [GeV]"
 model = ROOT.TF1("model", "1./{alpha}*exp(-{alpha}*(x-{pT0}))".format(pT0=pT0, alpha=alpha), xmin, xmax)
 score_theory     = ROOT.TF1("score_theory", "1./{alpha}-(x-{pT0})".format(pT0=pT0, alpha=alpha), xmin, xmax)
 min_score_theory = min( score_theory.Eval(xmin), score_theory.Eval(xmax) )

@@ -1,73 +1,80 @@
 #!/usr/bin/env python
-# Standard imports
 
+# Standard imports
+import ROOT
 import numpy as np
 import random
 import cProfile
 import time
-import os
-
+import os, sys
 from math import log, exp
-import Analysis.Tools.syncer
-import ROOT
 
+# load root macro
+ROOT.gROOT.LoadMacro('$CMSSW_BASE/src/Analysis/Tools/scripts/tdrstyle.C')
+ROOT.setTDRStyle()
+ROOT.gROOT.LoadMacro("$CMSSW_BASE/src/BIT/tdrstyles/anotherNiceColorPalette.C")
+#ROOT.anotherNiceColorPalette(20)
+ROOT.niceColorPalette(15)
+
+# Analysis
+import Analysis.Tools.syncer
+
+# RootTools
+from RootTools.core.standard   import *
+from RootTools.plot.helpers    import copyIndexPHP
+
+# BIT
 from BoostedInformationTree import BoostedInformationTree
 
-import time
+# User
+from user import plot_directory as user_plot_directory
+
+
+# Model choices
+allModels = set( [ os.path.splitext(item)[0] for item in os.listdir( "toy_models" ) if not item.startswith("_") and "2D" in item ] )
+
+# Parser
+import argparse
+argParser = argparse.ArgumentParser(description = "Argument parser")
+argParser.add_argument("--plot_directory",     action="store",      default="BIT_v1",                                                                help="plot sub-directory")
+argParser.add_argument("--model",              action="store",      default="exponential_2D", type=str,   choices=allModels,                         help="import model")
+argParser.add_argument("--nTraining",          action="store",      default=100000,           type=int,                                              help="number of training events")
+argParser.add_argument("--luminosity",         action="store",      default=137,              type=int,                                              help="luminosity value, currently only for plot label")
+argParser.add_argument("--treeRange",          action="store",      default=[1, 2, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100], type=int, nargs='*', help="list of nTrees for plots")
+args = argParser.parse_args()
 
 # import the toy model
-from toy_models import exponential_2D as model
-theta    = 0.001
-
-#from toy_models import power_law as model
-#theta    = 0.2
+import toy_models as models
+model = getattr( models, args.model )
 
 # Produce training data set
-n_events = 100000
-training_features, training_weights, training_diff_weights = model.get_dataset( n_events )
+training_features, training_weights, training_diff_weights = model.get_dataset( args.nTraining )
 
 # directory for plots
-from user import plot_directory as user_plot_directory
-plot_directory = os.path.join( user_plot_directory, model.id_string )
+plot_directory = os.path.join( user_plot_directory, args.plot_directory, model.id_string )
 
 if not os.path.isdir(plot_directory):
     os.makedirs( plot_directory )
-
-## Let's plot the model so that Niki sees the hypothesis.
-#h_SM  = ROOT.TH1F("h_SM",  "h_SM",  40, model.xmin, model.xmax)
-#h_BSM = ROOT.TH1F("h_BSM", "h_BSM", 40, model.xmin, model.xmax)
-#h_BSM.SetLineColor(ROOT.kRed)
-#h_BSM.SetMarkerStyle(0)
-#for i in range(n_events):
-#    h_SM.Fill ( training_features[i], training_weights[i] ) 
-#    h_BSM.Fill( training_features[i], training_weights[i]+theta*training_diff_weights[i] ) 
-#
-## Plot of hypothesis
-#h_BSM.Draw("HIST")
-#h_SM.Draw("HISTsame")
-#c1.SetLogy(model.make_log)
-
-#c1.Print(os.path.join(plot_directory, "model.png"))
 
 time1 = time.time()
 
 # BIT config
 n_trees       = model.n_trees
-max_depth     = 2 
+max_depth     = 2
 learning_rate = 0.20
 min_size      = 100
 n_plot        = 5
 
 bit= BoostedInformationTree(
-        training_features = training_features,
-        training_weights      = training_weights, 
-        training_diff_weights = training_diff_weights, 
-        learning_rate = learning_rate, 
-        n_trees = n_trees,
-        max_depth=max_depth,
-        min_size=min_size,
-        split_method='vectorized_split_and_weight_sums',
-        weights_update_method='vectorized')
+        training_features     = training_features,
+        training_weights      = training_weights,
+        training_diff_weights = training_diff_weights,
+        learning_rate         = learning_rate,
+        n_trees               = n_trees,
+        max_depth             = max_depth,
+        min_size              = min_size,
+        split_method          = 'vectorized_split_and_weight_sums',
+        weights_update_method = 'vectorized')
 
 bit.boost()
 time2 = time.time()
@@ -83,154 +90,78 @@ def score_histo( bit, max_n_tree = None):
             h.SetBinContent( h.FindBin(h.GetXaxis().GetBinLowEdge(i), h.GetYaxis().GetBinLowEdge(j)), bit.predict([i, j], max_n_tree = max_n_tree))
     return h
 
-#n_contour = 10
-#model.score_theory.SetContour(10)
-#for i in range(10):
-#    model.score_theory.SetContourLevel(i)
+c1 = ROOT.TCanvas("can","",550,600)
 
-c1 = ROOT.TCanvas()
-#model.score_theory.SetLineColor(ROOT.kRed)
-#score_theory.GetYaxis().SetRangeUser(.4, 2)
+pads = ROOT.TPad("pad","",0.,0.,1.,1.)
+pads.SetRightMargin(0.02)
+pads.SetLeftMargin(0.14)
+pads.SetTopMargin(0.08)
+pads.Draw()
+pads.cd()
+
 model.score_theory.GetXaxis().SetRangeUser(model.xmin, model.xmax)
 model.score_theory.GetYaxis().SetRangeUser(model.ymin, model.ymax)
+model.score_theory.GetXaxis().SetTitle(model.texX)
+model.score_theory.GetYaxis().SetTitle(model.texX)
+
+model.score_theory.GetXaxis().SetTitleFont(42)
+model.score_theory.GetYaxis().SetTitleFont(42)
+model.score_theory.GetXaxis().SetLabelFont(42)
+model.score_theory.GetYaxis().SetLabelFont(42)
+
+model.score_theory.GetXaxis().SetTitleOffset(1.1)
+model.score_theory.GetYaxis().SetTitleOffset(1.45)
+
+model.score_theory.GetXaxis().SetTitleSize(0.045)
+model.score_theory.GetYaxis().SetTitleSize(0.045)
+model.score_theory.GetXaxis().SetLabelSize(0.04)
+model.score_theory.GetYaxis().SetLabelSize(0.04)
+
+model.score_theory.SetLineWidth(2)
+model.score_theory.SetLineStyle(7)
+model.score_theory.SetLineColor(ROOT.kGray+2)
+
 counter=0
-for n_tree in [1, 2, 5, 10, 20, 30, 40, 50, 80, 100, 200, 1000]:
+for n_tree in args.treeRange:
 
     print "n_tree", n_tree
-    fitted = score_histo( bit, max_n_tree = n_tree ) 
-#        fitted.SetLineColor(2+counter)
-#        #fitted.GetYaxis().SetRangeUser(model.min_score_theory, model.max_score_theory)
-#        counter+=1
+    fitted = score_histo( bit, max_n_tree = n_tree )
+    fitted.SetLineWidth(3)
+    fitted.SetLineColor(ROOT.kBlue)
 
-    fitted.DrawCopy("CONT3")
-    model.score_theory.Draw("CONT3SAME")
+    fitted.Smooth()
+
+    model.score_theory.Draw("CONT3")
+    fitted.DrawCopy("CONT1SAME")
 
     c1.SetLogy(0)
-    c1.Print(os.path.join(plot_directory, "score_boosted_nTreePlotted%i.png"%n_tree))
 
-#test_features, test_weights, test_diff_weights = model.get_dataset( n_events )
-#
-#training_profile     = ROOT.TProfile("train", "train",         20, model.xmin, model.xmax) 
-#test_profile         = ROOT.TProfile("test",  "test",          20, model.xmin, model.xmax)
-#training_BSM_profile = ROOT.TProfile("BSM_train", "BSM_train", 20, model.xmin, model.xmax)
-#test_BSM_profile     = ROOT.TProfile("BSM_test",  "BSM_test",  20, model.xmin, model.xmax) 
-#
-#training     = ROOT.TH1D("train", "train",          20, model.min_score_theory, model.max_score_theory )
-#test         = ROOT.TH1D("test",  "test",           20, model.min_score_theory, model.max_score_theory )
-#training_BSM = ROOT.TH1D("BSM_train", "BSM_train",  20, model.min_score_theory, model.max_score_theory )
-#test_BSM     = ROOT.TH1D("BSM_test",  "BSM_test",   20, model.min_score_theory, model.max_score_theory )
-#
-#training_FI_histo     = ROOT.TH1D("train", "train",          n_trees, 1, n_trees+1 )
-#test_FI_histo         = ROOT.TH1D("test",  "test",           n_trees, 1, n_trees+1 )
-#
-#test_FIs     = np.zeros(n_trees)
-#training_FIs = np.zeros(n_trees)
-#test_FIs_lowPt     = np.zeros(n_trees)
-#training_FIs_lowPt = np.zeros(n_trees)
-#test_FIs_highPt     = np.zeros(n_trees)
-#training_FIs_highPt = np.zeros(n_trees)
-#for i in range(n_events):
-#    test_scores     = bit.predict( test_features[i], summed = False)
-#    training_scores = bit.predict( training_features[i], summed = False)
-#
-#    test_score  = sum( test_scores )
-#    train_score = sum( training_scores )
-#
-#    test_profile    .Fill(      test_features[i][0],     test_score,   test_weights[i] ) 
-#    training_profile.Fill(      training_features[i][0], train_score,  training_weights[i] )
-#    test_BSM_profile    .Fill(  test_features[i][0],     test_score,   test_weights[i]+theta*test_diff_weights[i] ) 
-#    training_BSM_profile.Fill(  training_features[i][0], train_score,  training_weights[i]+theta*training_diff_weights[i] )  
-#    test    .Fill(       test_score, test_weights[i]) 
-#    training.Fill(       train_score, training_weights[i])
-#    test_BSM    .Fill(   test_score,  test_weights[i]+theta*test_diff_weights[i]) 
-#    training_BSM.Fill(   train_score, training_weights[i]+theta*training_diff_weights[i]) 
-#
-#    # compute test and training FI evolution during training
-#    test_FIs     += test_diff_weights[i]*test_scores 
-#    training_FIs += training_diff_weights[i]*training_scores 
-#    if test_features[i][0]<50:
-#        test_FIs_lowPt          += test_diff_weights[i]*test_scores              
-#    if training_features[i][0]<50:
-#        training_FIs_lowPt      += training_diff_weights[i]*training_scores 
-#    if test_features[i][0]>200:
-#        test_FIs_highPt         += test_diff_weights[i]*test_scores          
-#    if training_features[i][0]>200:
-#        training_FIs_highPt     += training_diff_weights[i]*training_scores 
-#
-#training_profile.SetLineColor(ROOT.kRed)
-#test_profile    .SetLineColor(ROOT.kBlue)
-#training_profile.SetLineStyle(ROOT.kDashed)
-#test_profile    .SetLineStyle(ROOT.kDashed)
-#training_profile.SetMarkerStyle(0)
-#test_profile    .SetMarkerStyle(0)
-#training_BSM_profile.SetLineColor(ROOT.kRed)
-#test_BSM_profile    .SetLineColor(ROOT.kBlue)
-#training_BSM_profile.SetMarkerStyle(0)
-#test_BSM_profile    .SetMarkerStyle(0)
-#
-#training_profile.Draw("hist")
-#test_profile.Draw("histsame")
-#training_BSM_profile.Draw("histsame")
-#test_BSM_profile.Draw("histsame")
-#c1.Print(os.path.join(plot_directory, "score_profile_validation_profile.png"))
-#
-#training.SetLineColor(ROOT.kBlue)
-#test    .SetLineColor(ROOT.kBlue)
-#training.SetLineStyle(ROOT.kDashed)
-#training.SetMarkerStyle(0)
-#test    .SetMarkerStyle(0)
-#training_BSM.SetLineColor(ROOT.kRed)
-#test_BSM    .SetLineColor(ROOT.kRed)
-#training_BSM.SetLineStyle(ROOT.kDashed)
-#training_BSM.SetMarkerStyle(0)
-#test_BSM    .SetMarkerStyle(0)
-#
-#training_BSM.Draw("hist")
-#training_BSM.GetYaxis().SetRangeUser( (1 if model.make_log else 0), (3 if model.make_log else 1.2)*max(map( lambda h:h.GetMaximum(), [training, test, training_BSM, test_BSM]  )) )
-#test_BSM.Draw("histsame")
-#training.Draw("histsame")
-#test.Draw("histsame")
-#c1.SetLogy(model.make_log)
-#l = ROOT.TLegend(0.6, 0.74, 1.0, 0.92)
-#l.AddEntry(training, "train (SM)")
-#l.AddEntry(test, "test (SM)")
-#l.AddEntry(training_BSM, "train (BSM)")
-#l.AddEntry(test_BSM, "test (BSM)")
-#l.SetFillStyle(0)
-#l.SetShadowColor(ROOT.kWhite)
-#l.SetBorderSize(0)
-#l.Draw()
-#c1.Print(os.path.join(plot_directory, "score_validation.png"))
-#
-#
-#for name, test_FIs_, training_FIs_ in [
-#        ("all", test_FIs, training_FIs),
-#        ("lowPt", test_FIs_lowPt, training_FIs_lowPt),
-#        ("highPt", test_FIs_highPt, training_FIs_highPt),
-#        ]:
-#    for i_tree in range(n_trees):
-#        test_FI_histo    .SetBinContent( i_tree+1, sum(test_FIs_[:i_tree]) )        
-#        training_FI_histo.SetBinContent( i_tree+1, sum(training_FIs_[:i_tree]) )        
-#
-#    test_FI_histo    .SetLineColor(ROOT.kBlue)
-#    training_FI_histo.SetLineColor(ROOT.kRed)
-#    test_FI_histo    .Draw("hist")
-#    test_FI_histo    .GetYaxis().SetRangeUser(
-#        #1+0.5*min(test_FI_histo.GetMinimum(), training_FI_histo.GetMinimum()),
-#        (10**-2)*min(test_FI_histo.GetBinContent(test_FI_histo.GetMaximumBin()), training_FI_histo.GetBinContent(training_FI_histo.GetMaximumBin())),
-#        1.5*max(     test_FI_histo.GetBinContent(test_FI_histo.GetMaximumBin()), training_FI_histo.GetBinContent(training_FI_histo.GetMaximumBin())),
-#        )
-#    test_FI_histo    .GetXaxis().SetTitle("tree")
-#    training_FI_histo.Draw("histsame")
-#    test_FI_histo    .SetMarkerStyle(0)
-#    training_FI_histo.SetMarkerStyle(0)
-#    l = ROOT.TLegend(0.6, 0.14, 1.0, 0.23)
-#    l.AddEntry(training_FI_histo, "train FI (%s)"%name)
-#    l.AddEntry(test_FI_histo, "test FI (%s)"%name)
-#    l.SetFillStyle(0)
-#    l.SetShadowColor(ROOT.kWhite)
-#    l.SetBorderSize(0)
-#    l.Draw()
-#    c1.SetLogy(0)
-#    c1.Print(os.path.join(plot_directory, "FI_evolution_%s.png"%name))
-#
+    leg = ROOT.TLegend(0.15,0.72,0.81,0.87)
+    leg.SetBorderSize(0)
+    leg.SetTextSize(0.037)
+    leg.SetFillStyle(0)
+    leg.AddEntry( model.score_theory, "Score (theory)","l" )
+    leg.AddEntry( fitted,             "Score (boosted, N_{tree}= %i)"%(n_tree), "l" )
+#    leg.Draw()
+
+
+    latex1 = ROOT.TLatex()
+    latex1.SetNDC()
+    latex1.SetTextSize(0.04)
+    latex1.SetTextFont(42)
+    latex1.SetTextAlign(11)
+
+    latex2 = ROOT.TLatex()
+    latex2.SetNDC()
+    latex2.SetTextSize(0.05)
+    latex2.SetTextFont(42)
+    latex2.SetTextAlign(11)
+
+    latex2.DrawLatex(0.14, 0.94, '#bf{Boosted Info Trees}'),
+    latex1.DrawLatex(0.7, 0.94, '#bf{%i fb^{-1} (13 TeV)}' %args.luminosity)
+
+    for e in [".png",".pdf",".root"]:
+        c1.Print(os.path.join(plot_directory, "score_boosted_nTreePlotted%i%s"%(n_tree,e)))
+
+
+copyIndexPHP(plot_directory)

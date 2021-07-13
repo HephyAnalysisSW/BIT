@@ -200,8 +200,8 @@ class Node:
             #print ("Choice2", depth, result_func(self.split_left_group), result_func(~self.split_left_group) )
             # The split was good, but we stop splitting further. Put everything in the left node! 
             self.split_value = float('inf')
-            self.left        = ResultNode(**{val:func(np.ones(len(self.features),dtype=bool)) for val, func in result_funcs.iteritems()})
-            self.right       = ResultNode(**{val:func(np.zeros(len(self.features),dtype=bool)) for val, func in result_funcs.iteritems()})
+            self.left        = ResultNode(**{val:func(np.ones(len(self.features),dtype=bool)) for val, func in result_funcs.items()})
+            self.right       = ResultNode(**{val:func(np.zeros(len(self.features),dtype=bool)) for val, func in result_funcs.items()})
             # The split was good, but we stop splitting further. Put the result of the split in the left/right boxes.
             #self.left, self.right = ResultNode(**{val:func(self.split_left_group) for val, func in result_funcs.iteritems()}), ResultNode(**{val:func(~self.split_left_group) for val, func in result_funcs.iteritems()})
             return
@@ -209,7 +209,7 @@ class Node:
         if np.count_nonzero(self.split_left_group) < 2*self.min_size:
             #print ("Choice3", depth, result_func(self.split_left_group) )
             # Too few events in the left box. We stop.
-            self.left             = ResultNode(**{val:func(self.split_left_group) for val, func in result_funcs.iteritems()})
+            self.left             = ResultNode(**{val:func(self.split_left_group) for val, func in result_funcs.items()})
         else:
             #print ("Choice4", depth )
             # Continue splitting left box.
@@ -218,7 +218,7 @@ class Node:
         if np.count_nonzero(~self.split_left_group) < 2*self.min_size:
             #print ("Choice5", depth, result_func(~self.split_left_group) )
             # Too few events in the right box. We stop.
-            self.right            = ResultNode(**{val:func(~self.split_left_group) for val, func in result_funcs.iteritems()})
+            self.right            = ResultNode(**{val:func(~self.split_left_group) for val, func in result_funcs.items()})
         else:
             #print ("Choice6", depth  )
             # Continue splitting right box. 
@@ -284,7 +284,7 @@ class ResultNode:
     ''' Simple helper class to store result value.
     '''
     def __init__( self, **kwargs ):
-        for key, val in kwargs.iteritems():
+        for key, val in kwargs.items():
             setattr( self, key, val )
     def print_tree(self, key = 'FI', depth=0):
         print('%s[%s] (%d)' % (((depth)*' ', getattr( self, key), self.size)))
@@ -362,11 +362,11 @@ if __name__=="__main__":
         information_trees.append(root)
         toc = time.time()
         print("tree construction in {time:0.4f} seconds for split_method {method:s}".format(time=toc-tic, method=split_method))
-        print "max_depth", max_depth
+        print("max_depth", max_depth)
         print 
         root.print_tree()
         print 
-        print "Total FI", root.total_FI()
+        print("Total FI", root.total_FI())
         print 
         print 
 
@@ -380,7 +380,7 @@ if __name__=="__main__":
     event_2 = features[features_sorted_by_photon_pt[0],:]
     event_3 = features[features_sorted_by_photon_pt[int(len(features)/2)],:]
 
-    print "Test prediction for a couple of events"
+    print("Test prediction for a couple of events")
     for event in [event_1, event_2, event_3]:
         print(event)
         print(information_trees[0].predict(event))
