@@ -101,8 +101,8 @@ pads.cd()
 
 model.score_theory.GetXaxis().SetRangeUser(model.xmin, model.xmax)
 model.score_theory.GetYaxis().SetRangeUser(model.ymin, model.ymax)
-model.score_theory.GetXaxis().SetTitle(model.texX)
-model.score_theory.GetYaxis().SetTitle(model.texX)
+model.score_theory.GetXaxis().SetTitle("x")
+model.score_theory.GetYaxis().SetTitle("y")
 
 model.score_theory.GetXaxis().SetTitleFont(42)
 model.score_theory.GetYaxis().SetTitleFont(42)
@@ -157,8 +157,8 @@ for n_tree in args.treeRange:
     latex2.SetTextFont(42)
     latex2.SetTextAlign(11)
 
-    latex2.DrawLatex(0.14, 0.94, '#bf{Boosted Info Trees}'),
-    latex1.DrawLatex(0.7, 0.94, '#bf{%i fb^{-1} (13 TeV)}' %args.luminosity)
+#    latex2.DrawLatex(0.14, 0.94, '#bf{Boosted Info Trees}'),
+#    latex1.DrawLatex(0.7, 0.94, '#bf{%i fb^{-1} (13 TeV)}' %args.luminosity)
 
     for e in [".png",".pdf",".root"]:
         c1.Print(os.path.join(plot_directory, "score_boosted_nTreePlotted%i%s"%(n_tree,e)))
