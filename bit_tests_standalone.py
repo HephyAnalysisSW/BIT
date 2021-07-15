@@ -36,10 +36,10 @@ class TestBIT(unittest.TestCase):
                 bit.boost()
 
                 # unvectorized predictions
-                predicted_scores_20 = [bit.predict(features, max_n_tree=20, vectorized=False) for features in training_features]
+                predicted_scores_20 = [bit.predict(features, max_n_tree=20) for features in training_features]
                 
                 time1 = time.time()
-                predicted_scores_100 = [bit.predict(features,  max_n_tree=100, vectorized=False) for features in training_features]
+                predicted_scores_100 = [bit.predict(features, max_n_tree=100) for features in training_features]
                 time2 = time.time()
                 print "prediction time unvec: %.2f seconds" % (time2 - time1)
 
@@ -52,10 +52,10 @@ class TestBIT(unittest.TestCase):
                 self.assertAlmostEqual(284138.66016375029, training_FI_100)
 
                 # now the same predictions vectorized
-                predicted_scores_20 = bit.predict(training_features, max_n_tree=20, vectorized=True)
+                predicted_scores_20 = bit.vectorized_predict(training_features, max_n_tree=20)
                 
                 time1 = time.time()
-                predicted_scores_100 = bit.predict(training_features,  max_n_tree=100, vectorized=True)
+                predicted_scores_100 = bit.vectorized_predict(training_features, max_n_tree=100)
                 time2 = time.time()
                 print "prediction time vec: %.2f seconds" % (time2 - time1)
 
