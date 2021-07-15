@@ -3,8 +3,8 @@
 import unittest
 import numpy as np
 import time
-from BoostedInformationTree import BoostedInformationTree
-from Node import Node
+from BoostedInformationTreeP3 import BoostedInformationTree
+from NodeP3 import Node
 
 class TestBIT(unittest.TestCase):
         def test_power_law_model(self):
@@ -39,32 +39,32 @@ class TestBIT(unittest.TestCase):
                 predicted_scores_20 = [bit.predict(features, max_n_tree=20) for features in training_features]
                 
                 time1 = time.time()
-                predicted_scores_100 = [bit.predict(features, max_n_tree=100) for features in training_features]
+                predicted_scores_100 = [bit.predict(features,  max_n_tree=100) for features in training_features]
                 time2 = time.time()
-                print "prediction time unvec: %.2f seconds" % (time2 - time1)
+                print("prediction time unvec: %.2f seconds" % (time2 - time1))
 
                 training_FI_20 = np.dot(training_diff_weights, predicted_scores_20)
-                print "training FI_20: %f" % training_FI_20
+                print("training FI_20: %f" % training_FI_20)
                 self.assertAlmostEqual(278353.1436750, training_FI_20)
 
                 training_FI_100 = np.dot(training_diff_weights, predicted_scores_100)
-                print "training FI_100: %f" % training_FI_100
+                print("training FI_100: %f" % training_FI_100)
                 self.assertAlmostEqual(284138.66016375029, training_FI_100)
 
                 # now the same predictions vectorized
                 predicted_scores_20 = bit.vectorized_predict(training_features, max_n_tree=20)
                 
                 time1 = time.time()
-                predicted_scores_100 = bit.vectorized_predict(training_features, max_n_tree=100)
+                predicted_scores_100 = bit.vectorized_predict(training_features,  max_n_tree=100)
                 time2 = time.time()
-                print "prediction time vec: %.2f seconds" % (time2 - time1)
+                print("prediction time vec: %.2f seconds" % (time2 - time1))
 
                 training_FI_20 = np.dot(training_diff_weights, predicted_scores_20)
-                print "training FI_20: %f" % training_FI_20
+                print("training FI_20: %f" % training_FI_20)
                 self.assertAlmostEqual(278353.1436750, training_FI_20)
 
                 training_FI_100 = np.dot(training_diff_weights, predicted_scores_100)
-                print "training FI_100: %f" % training_FI_100
+                print("training FI_100: %f" % training_FI_100)
                 self.assertAlmostEqual(284138.66016375029, training_FI_100)
 
         def test_node_splitting(self):
