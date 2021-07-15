@@ -35,7 +35,7 @@ Hyperparameters for the weak learners are the maximum depth of the corresponding
 ### Training
 
 The actual training is performed by the following call on a *BoostedInformationTree* object. For Python3, the separate version *BoostedInformationTreeP3* needs to used.
-
+```python3
     bit = BoostedInformationTree(
             training_features = training_features,
             training_weights      = training_weights, 
