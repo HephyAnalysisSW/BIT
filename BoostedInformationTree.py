@@ -127,4 +127,4 @@ class BoostedInformationTree:
         if summed:
             return np.dot(learning_rates, predictions)
         else:
-            return learning_rates*predictions 
+            return learning_rates.reshape(-1, 1)*predictions 
