@@ -6,7 +6,7 @@ import operator
 import time
 
 class Node:
-    def __init__( self, features, max_depth, min_size, training_weights, training_diff_weights, split_method="python_loop", depth=0):
+    def __init__( self, features, max_depth, min_size, training_weights, training_diff_weights, split_method="vectorized_split_and_weight_sums", depth=0):
 
         ## basic BDT configuration
         self.max_depth  = max_depth

@@ -101,16 +101,30 @@ class BoostedInformationTree:
         self.training_diff_weights  
         self.training_features      
 
-    def predict( self, feature_array, max_n_tree = None, summed = True, vectorized = True):
-        if vectorized:
-            predictions = [ self.learning_rate*tree.vectorized_predict( feature_array ) for tree in self.trees[:max_n_tree] ]
-        else:    
-            predictions = [ self.learning_rate*tree.predict( feature_array ) for tree in self.trees[:max_n_tree] ]
+    def predict( self, feature_array, max_n_tree = None, summed = True, last_tree_counts_full = False):
+        # list learning rates
+        learning_rates = self.learning_rate*np.ones(max_n_tree if max_n_tree is not None else self.n_trees)
+        # keep the last tree?
+        if last_tree_counts_full and (max_n_tree is None or max_n_tree==self.n_trees):
+            learning_rates[-1] = 1
+            
+        predictions = np.array([ tree.predict( feature_array ) for tree in self.trees[:max_n_tree] ])
 
         if summed:
-            if vectorized:
-                return np.sum(predictions, axis=0)
-            else: 
-                return sum( predictions, 0. )
+            return np.dot(learning_rates, predictions)
         else:
-            return np.array(predictions)
+            return learning_rates*predictions
+    
+    def vectorized_predict( self, feature_array, max_n_tree = None, summed = True, last_tree_counts_full = False):
+        # list learning rates
+        learning_rates = self.learning_rate*np.ones(max_n_tree if max_n_tree is not None else self.n_trees)
+        # keep the last tree?
+        if last_tree_counts_full and (max_n_tree is None or max_n_tree==self.n_trees):
+            learning_rates[-1] = 1
+            
+        predictions = np.array([ tree.vectorized_predict( feature_array ) for tree in self.trees[:max_n_tree] ])
+            
+        if summed:
+            return np.dot(learning_rates, predictions)
+        else:
+            return learning_rates.reshape(-1, 1)*predictions 
