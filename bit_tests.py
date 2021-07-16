@@ -170,9 +170,14 @@ bit= BoostedInformationTree(
         max_depth             = max_depth,
         min_size              = min_size,
         split_method          = 'vectorized_split_and_weight_sums',
-        weights_update_method = 'vectorized')
+        weights_update_method = 'vectorized',
+        calibrated            = False,
+            )
 
 bit.boost()
+
+#bit.save('tmp.pkl')
+#bit = BoostedInformationTree.load('tmp.pkl')
 
 time2 = time.time()
 boosting_time = time2 - time1

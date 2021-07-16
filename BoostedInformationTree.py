@@ -11,11 +11,11 @@ from Node import Node
 
 class BoostedInformationTree:
 
-    def __init__( self, training_features, training_weights, training_diff_weights, n_trees = 100, learning_rate = "auto", weights_update_method = "python_loop", **kwargs ):
+    def __init__( self, training_features, training_weights, training_diff_weights, n_trees = 100, learning_rate = "auto", weights_update_method = "python_loop", calibrated = False, **kwargs ):
 
         self.n_trees        = n_trees
         self.learning_rate  = learning_rate
-       
+        self.calibrate      = calibrated 
         # Attempt to learn 98%. (1-learning_rate)^n_trees = 0.02 -> After the fit, the score is at least down to 2% 
         if learning_rate == "auto":
             self.learning_rate = 1-0.02**(1./self.n_trees)
@@ -34,8 +34,17 @@ class BoostedInformationTree:
     @classmethod
     def load(cls, filename):
         old_instance = pickle.load(file( filename ))
-        new_instance = cls( None, None, None, n_trees = old_instance.n_trees, learning_rate = old_instance.learning_rate, weights_update_method = old_instance.weights_update_method)
+        new_instance = cls( None, None, None, 
+                n_trees = old_instance.n_trees, 
+                learning_rate = old_instance.learning_rate, 
+                weights_update_method = old_instance.weights_update_method,
+                calibrated = old_instance.calibrated if hasattr(old_instance, "calibrated") else False,
+                )
         new_instance.trees = old_instance.trees
+        if hasattr( old_instance, "calibration_min_fac" ):
+            new_instance.calibration_min_fac = old_instance.calibration_min_fac
+        else:
+            new_instance.calibration_min_fac = ( 0, 1 )
         return new_instance  
 
     def save(self, filename):
@@ -95,11 +104,18 @@ class BoostedInformationTree:
         sys.stdout.write("]\n") # this ends the progress bar
         print "weak learner time: %.2f" % weak_learner_time
         print "update time: %.2f" % update_time
+       
+        self.calibration_min_fac = (0., 1.)
+        if self.calibrate:
+            #predictions = np.vectorize(self.predict)(self.training_features) #Should work but doesn't 
+            predictions = map( self.predict, self.training_features) #Should work but doesn't 
+            min_        = min(predictions)
+            self.calibration_min_fac = ( min_, 1./(max(predictions)-min_) )
 
         # purge training data
-        self.training_weights       
-        self.training_diff_weights  
-        self.training_features      
+        del self.training_weights       
+        del self.training_diff_weights  
+        del self.training_features      
 
     def predict( self, feature_array, max_n_tree = None, summed = True, last_tree_counts_full = False):
         # list learning rates
@@ -111,9 +127,9 @@ class BoostedInformationTree:
         predictions = np.array([ tree.predict( feature_array ) for tree in self.trees[:max_n_tree] ])
 
         if summed:
-            return np.dot(learning_rates, predictions)
+            return ( np.dot(learning_rates, predictions) - self.calibration_min_fac[0])*self.calibration_min_fac[1]
         else:
-            return learning_rates*predictions
+            return ( learning_rates*predictions - self.calibration_min_fac[0])*self.calibration_min_fac[1]
     
     def vectorized_predict( self, feature_array, max_n_tree = None, summed = True, last_tree_counts_full = False):
         # list learning rates
