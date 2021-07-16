@@ -113,12 +113,18 @@ for i in range(args.nTraining):
 
 # Histo style
 h_SM.style = styles.lineStyle( ROOT.kRed, width=2 )
-h_SM.legendText = "Reference" #"SM hypothesis"
 h_SM.Scale(1./h_SM.Integral())
 
 h_BSM.style = styles.lineStyle( ROOT.kBlue, width=2, dashed=True )
-h_BSM.legendText = "#alpha = %.3f"%args.theta #"BSM hypothesis"
 h_BSM.Scale(1./h_BSM.Integral())
+
+if args.model == "exponential":
+    h_SM.legendText = "#theta_{0}=%.2f"%model.theta0
+    h_BSM.legendText = "#theta_{0}+#Delta#theta, #Delta#theta=%.3f"%args.theta
+else:
+    h_SM.legendText = "#theta_{0}=%i"%model.theta0
+    h_BSM.legendText = "#theta_{0}+#Delta#theta, #Delta#theta=%.1f"%args.theta
+
 
 # Plot of hypothesis
 histos = [ [h_SM], [h_BSM] ]
@@ -126,9 +132,14 @@ plot   = Plot.fromHisto( "model",  histos, texX="x", texY="a.u." )
 
 # Plot Style
 histModifications      = [] #lambda h: h.GetYaxis().SetTitleOffset(2.2) ]
+histModifications += [ lambda h: h.GetXaxis().SetTitleSize(26) ]
+histModifications += [ lambda h: h.GetYaxis().SetTitleSize(26) ]
+histModifications += [ lambda h: h.GetXaxis().SetLabelSize(22)  ]
+histModifications += [ lambda h: h.GetYaxis().SetLabelSize(22)  ]
+
 ratioHistModifications = [] #lambda h: h.GetYaxis().SetTitleOffset(2.2) ]
 ratio                  = None #{'yRange':(0.51,1.49), 'texY':"BSM/SM", "histModifications":ratioHistModifications}
-legend                 = (0.2,0.75,0.9,0.88)
+legend                 = (0.2,0.74,0.6,0.88)
 if args.model == "power_law":
     yRange                 = (0.00003, "auto")
 else:
@@ -230,17 +241,22 @@ test_profile    .style = styles.lineStyle( ROOT.kBlue, width=2 )
 training_BSM_profile.style = styles.lineStyle( ROOT.kRed, width=2, dashed=True )
 test_BSM_profile    .style = styles.lineStyle( ROOT.kRed, width=2 )
 
-training_profile.legendText = "Training (ref.)"
-test_profile    .legendText = "Test (ref.)"
-training_BSM_profile.legendText = "Training (#alpha)"
-test_BSM_profile    .legendText = "Test (#alpha)"
+training_profile.legendText = "Training (#theta_{0})"
+test_profile    .legendText = "Test (#theta_{0})"
+training_BSM_profile.legendText = "Training (#theta_{0}+#Delta#theta)"
+test_BSM_profile    .legendText = "Test (#theta_{0}+#Delta#theta)"
 
 # Plot of hypothesis
 histos = [ [training_profile], [test_profile], [training_BSM_profile], [test_BSM_profile] ]
-plot   = Plot.fromHisto( "score_profile_validation_profile",  histos, texX=model.texX, texY="Score" )
+plot   = Plot.fromHisto( "score_profile_validation_profile",  histos, texX=model.texX, texY="F(x)" )
 
 # Plot Style
 histModifications      = [ lambda h: h.GetYaxis().SetTitleOffset(1.4) ]
+histModifications += [ lambda h: h.GetXaxis().SetTitleSize(26) ]
+histModifications += [ lambda h: h.GetYaxis().SetTitleSize(26) ]
+histModifications += [ lambda h: h.GetXaxis().SetLabelSize(22)  ]
+histModifications += [ lambda h: h.GetYaxis().SetLabelSize(22)  ]
+
 ratioHistModifications = []
 ratio                  = None
 legend                 = (0.55,0.6,0.9,0.9)
@@ -264,10 +280,10 @@ test    .style = styles.lineStyle( ROOT.kBlue, width=2 )
 training_BSM.style = styles.lineStyle( ROOT.kRed, width=2, dashed=True )
 test_BSM    .style = styles.lineStyle( ROOT.kRed, width=2 )
 
-training.legendText = "Training (ref.)"
-test    .legendText = "Test (ref.)"
-training_BSM.legendText = "Training (#alpha)"
-test_BSM    .legendText = "Test (#alpha)"
+training.legendText = "Training (#theta_{0})"
+test    .legendText = "Test (#theta_{0})"
+training_BSM.legendText = "Training (#theta_{0}+#Delta#theta)"
+test_BSM    .legendText = "Test (#theta_{0}+#Delta#theta)"
 
 test.Scale(1./training.Integral())
 test_BSM.Scale(1./training_BSM.Integral())
@@ -281,9 +297,14 @@ plot   = Plot.fromHisto( "score_validation",  histos, texX="F(x)", texY="a.u." )
 
 # Plot Style
 histModifications      = []
+histModifications += [ lambda h: h.GetXaxis().SetTitleSize(26) ]
+histModifications += [ lambda h: h.GetYaxis().SetTitleSize(26) ]
+histModifications += [ lambda h: h.GetXaxis().SetLabelSize(22)  ]
+histModifications += [ lambda h: h.GetYaxis().SetLabelSize(22)  ]
+
 ratioHistModifications = []
 ratio                  = None
-legend                 = (0.2,0.7,0.9,0.88)
+legend                 = (0.2,0.64,0.6,0.88)
 minY                   =  1
 maxY                   = (10 if model.make_log else 2.2)*max( map( lambda h:h.GetMaximum(), [training, test, training_BSM, test_BSM] ) )
 yRange                 = (0,"auto") #( minY, maxY )
@@ -317,11 +338,16 @@ for name, texName, test_FIs_, training_FIs_ in [
     maxY   = 1.5  * max( test_FI_histo.GetBinContent(test_FI_histo.GetMaximumBin()), training_FI_histo.GetBinContent(training_FI_histo.GetMaximumBin()))
 
     histos = [ [test_FI_histo], [training_FI_histo] ]
-    plot   = Plot.fromHisto( "FI_evolution_%s"%name,  histos, texX="N_{tree}", texY="Loss" )
+    plot   = Plot.fromHisto( "FI_evolution_%s"%name,  histos, texX="b", texY="L(D,b)" )
 
     # Plot Style
     histModifications      = []
-    histModifications      += [ lambda h: h.GetYaxis().SetTitleOffset(1.6) ]
+    histModifications      += [ lambda h: h.GetYaxis().SetTitleOffset(1.4) ]
+    histModifications += [ lambda h: h.GetXaxis().SetTitleSize(26) ]
+    histModifications += [ lambda h: h.GetYaxis().SetTitleSize(26) ]
+    histModifications += [ lambda h: h.GetXaxis().SetLabelSize(22)  ]
+    histModifications += [ lambda h: h.GetYaxis().SetLabelSize(22)  ]
+
     ratioHistModifications = []
     ratio                  = None
     if name == "all":
@@ -354,49 +380,63 @@ def score_histo( bit, title, max_n_tree = None):
 histos = []
 histos.append( [model.score_theory] )
 histos[-1][0].style      = styles.lineStyle( ROOT.kRed, width=2 )
-histos[-1][0].legendText = "Reference"
+histos[-1][0].legendText = "t(x|#theta_{0})"
+
+# empty slot in the legend
+empty = score_histo( bit, "empty", max_n_tree=0 )
+empty.Scale(0)
+histos.append( [empty] )
+histos[-1][0].style      = styles.lineStyle( ROOT.kWhite, width=0 )
+histos[-1][0].legendText = " "
 
 counter=0
 colors = [8,30,38,9,13]
 for n_tree in range(bit.n_trees):
     if bit.n_trees <= n_plot or n_tree%(bit.n_trees/n_plot) == 0:
+
         histos.append( [score_histo( bit, str(counter), max_n_tree=n_tree )] )
         histos[-1][0].style      = styles.lineStyle( colors[counter], width=3 )
-        histos[-1][0].legendText = "N_{tree}= %i"%(n_tree)
+        histos[-1][0].legendText = "F^{(%i)}"%(n_tree)
         counter+=1
 
 histos.append( [score_histo( bit, "full" )] )
 histos[-1][0].style      = styles.lineStyle( ROOT.kBlack, width=3 )
-histos[-1][0].legendText = "N_{tree}= %i"%(n_tree+1)
+histos[-1][0].legendText = "F^{(%i)}"%(n_tree+1)
 
 # Plot of hypothesis
-plot   = Plot.fromHisto( "score_boosted",  histos, texX="x", texY="Score" )
+plot   = Plot.fromHisto( "score_boosted",  histos, texX="x", texY="F(x)" )
 
 # Plot Style
 histModifications      = []
+histModifications += [ lambda h: h.GetXaxis().SetTitleSize(26) ]
+histModifications += [ lambda h: h.GetYaxis().SetTitleSize(26) ]
+histModifications += [ lambda h: h.GetXaxis().SetLabelSize(22)  ]
+histModifications += [ lambda h: h.GetYaxis().SetLabelSize(22)  ]
+
 ratioHistModifications = []
 ratio                  = None
 minY                   = model.min_score_theory
 maxY                   = model.max_score_theory
 if args.model == "power_law":
-    legend                 = (0.55,0.6,0.9,0.9)
+    legend                 = [(0.6,0.63,0.85,0.9),2]
 elif args.model == "gaussian_width":
-    legend                 = (0.4,0.6,0.6,0.9)
+    legend                 = [(0.42,0.6,0.67,0.87),2]
     minY                   = -1
     maxY                   = 17
 elif args.model == "gaussian_mean":
-    legend                 = (0.2,0.57,0.55,0.87)
+    legend                 = [(0.2,0.6,0.45,0.87),2]
 elif args.model == "piece_wise":
-    legend                 = (0.65,0.15,0.9,0.45)
+    legend                 = [(0.65,0.15,0.9,0.5),2]
     minY                   = -0.4
     maxY                   = 0.25
 else:
-    legend                 = (0.2,0.15,0.55,0.45)
+    legend                 = [(0.2,0.15,0.45,0.43),2]
 yRange                 = (minY, maxY)
 
 plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, lumi=args.luminosity, plotLog=False, histModifications=histModifications )
 
 ##############
 ##############
+
 
 
