@@ -106,11 +106,14 @@ class BoostedInformationTree:
         print "update time: %.2f" % update_time
        
         self.calibration_min_fac = (0., 1.)
+        time1 = time.time()
         if self.calibrate:
-            #predictions = np.vectorize(self.predict)(self.training_features) #Should work but doesn't 
-            predictions = map( self.predict, self.training_features) #Should work but doesn't 
-            min_        = min(predictions)
-            self.calibration_min_fac = ( min_, 1./(max(predictions)-min_) )
+            predictions = self.vectorized_predict(self.training_features)
+            min_        = np.min(predictions)
+            self.calibration_min_fac = ( min_, 1./(np.max(predictions)-min_) )
+        time2 = time.time()
+        calibration_time = time2 - time1
+        print "calibration time: %.2f" % calibration_time
 
         # purge training data
         del self.training_weights       
@@ -141,6 +144,6 @@ class BoostedInformationTree:
         predictions = np.array([ tree.vectorized_predict( feature_array ) for tree in self.trees[:max_n_tree] ])
             
         if summed:
-            return np.dot(learning_rates, predictions)
+            return (np.dot(learning_rates, predictions) - self.calibration_min_fac[0])*self.calibration_min_fac[1]
         else:
-            return learning_rates.reshape(-1, 1)*predictions 
+            return (learning_rates.reshape(-1, 1)*predictions - self.calibration_min_fac[0])*self.calibration_min_fac[1]
