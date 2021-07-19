@@ -1,12 +1,32 @@
-# Boosted Information Trees!
+# Boosted Information Trees
 
 Python2/3 implementations of a new tree boosting algorithm designed for the measurement of a single scalar parameter in the context of effective field theory (EFT). The *Boosted Information Tree* algorithm is constructed by describing the loss function of traditional Boosted Decision Tree classifiers in terms of the Fisher information of Poisson counting experiments and promoting this interpretation to the case of general EFT predictions. The algorithm is designed to classify EFT  hypothesis arbitrarily close in parameter space in the linear approximation. The classifier output is shown to approximate the score, the derivative of the log likelihood function with respect to the parameter.
+
+Loss Evolution Boosting             |  Learned Score 2D Model
+:-------------------------:|:-------------------------:
+![](figures/evolution_loss.png)  |  ![](figures/learned_score_2d.png)
 
 More information can be found soon in the accompanying publication as preprint on arXiv.
 
 ## Example Use of Algorithm
 
 The boosting algorithm takes as input multi-dimensional features, events weights, and event weight derivates. It seeks to learn the underlying score function by a series of weak learners (in form of decision trees) which partition the feature space as to maximize the cumulative Fisher information corresponding of the Poisson training yields.
+
+### Python Modules
+
+NumPy is the only external dependency required, the Python3 module is suffixed with P3.
+
+Python2
+```python
+    import numpy as np
+    from BoostedInformationTree import BoostedInformationTree
+```
+
+Python3
+```python
+    import numpy as np
+    from BoostedInformationTreeP3 import BoostedInformationTree
+```
 
 ### Input Data
 
@@ -48,4 +68,4 @@ The actual training is performed by the following call on a *BoostedInformationT
     bit.boost()
 ```
 
-A full example including plots and evolution of the Fisher information of the training iterations is presented in a [Demo Jupyter Notebook](bit_p3_demo.ipynb)
+Full examples including plots of theoretical and learned score functions of several toy models and evolution of the Fisher information of the training iterations are presented in a [Demo Jupyter Notebook](bit_p3_demo.ipynb)
