@@ -1,9 +1,7 @@
 #!/usr/bin/env python
-# Standard imports
+
 import numpy as np
-import cProfile
 import operator 
-import time
 
 class Node:
     def __init__( self, features, max_depth, min_size, training_weights, training_diff_weights, split_method="vectorized_split_and_weight_sums", depth=0):
@@ -292,96 +290,3 @@ class ResultNode:
     def get_list( self, key='score'):
         ''' recursively obtain all thresholds (bottom of recursion)'''
         return getattr(self, key) 
-
-
-if __name__=="__main__":
-
-    import uproot
-    import awkward
-    import pandas as pd
-
-    # Arguments
-    import argparse
-    argParser = argparse.ArgumentParser(description = "Argument parser")
-    argParser.add_argument('--maxEvents', action='store', type=int, default=100000)
-    argParser.add_argument('--minDepth', action='store', type=int, default=1)
-    argParser.add_argument('--maxDepth', action='store', type=int, default=4)
-    argParser.add_argument('--minSize', action='store', type=int, default=50)
-    argParser.add_argument('--splitMethod', action='store', type=str, default='vectorized_split_and_weight_sums')
-    args = argParser.parse_args()
-
-    max_events  = args.maxEvents
-    input_file  = "/eos/vbc/user/robert.schoefbeck/TMB/bit/MVA-training/ttG_WG_small/WGToLNu_fast/WGToLNu_fast.root"
-    #input_file  = "/scratch-cbe/users/nikolaus.frohner/TMB/bit/MVA-training/ttG_WG/WGToLNu_fast/WGToLNu_fast.root"
-    upfile      = uproot.open( input_file )
-    tree        = upfile["Events"]
-    n_events    = len( upfile["Events"] )
-    n_events    = min(max_events, n_events)
-    entrystart, entrystop = 0, n_events 
-
-    # Load features
-    #branches    = [ "mva_photon_pt", ]#"mva_photon_eta", "mva_photonJetdR", "mva_photonLepdR", "mva_mT" ]
-    branches    = [ "mva_photon_pt" , "mva_photon_eta", "mva_photonJetdR", "mva_photonLepdR", "mva_mT" ]
-    df          = tree.pandas.df(branches = branches, entrystart=entrystart, entrystop=entrystop)
-    features    = df.values
-
-    print(features.shape)
-
-    # Load weights
-    #from Analysis.Tools.WeightInfo import WeightInfo
-    # custom WeightInfo
-    from WeightInfo import WeightInfo
-    w = WeightInfo("/eos/vbc/user/robert.schoefbeck/gridpacks/v6/WGToLNu_reweight_card.pkl")
-    w.set_order(2)
-
-    # Load all weights and reshape the array according to ndof from weightInfo
-    weights     = tree.pandas.df(branches = ["p_C"], entrystart=entrystart, entrystop=entrystop).values.reshape((-1,w.nid))
-    print(weights.shape)
-
-    min_size = args.minSize
-
-    assert len(features)==len(weights), "Need equal length for weights and features."
-
-    #FI_func = lambda coeffs: w.get_fisherInformation_matrix( coeffs, variables = ['cWWW'], cWWW=1)[1][0][0]
-    weight_mask = w.get_weight_mask( cWWW=1 )
-    diff_weight_mask = w.get_diff_mask( 'cWWW', cWWW=1 )
-
-    #TODO:
-    training_weights         = np.dot(weights, w.get_weight_mask(cWWW=1))
-    training_diff_weights    = np.dot(weights, w.get_diff_mask('cWWW', cWWW=1))
-
-    print("number of events %d" % len(features))
-    tic_overall = time.time()
-
-    max_depth = 10
-
-    information_trees = []
-    for split_method in ['python_loop', 'vectorized_split_and_weight_sums']:
-        tic  = time.time()
-        root = Node( features, max_depth=max_depth, min_size=min_size, training_weights=training_weights, training_diff_weights=training_diff_weights, split_method=split_method )
-        information_trees.append(root)
-        toc = time.time()
-        print("tree construction in {time:0.4f} seconds for split_method {method:s}".format(time=toc-tic, method=split_method))
-        print("max_depth", max_depth)
-        print 
-        root.print_tree()
-        print 
-        print("Total FI", root.total_FI())
-        print 
-        print 
-
-    toc_overall = time.time()
-    all_construction_time = toc_overall-tic_overall
-    print("all constructions in {time:0.4f} seconds".format(time=all_construction_time))
-
-    # test prediction
-    features_sorted_by_photon_pt = np.argsort(features[:,0])
-    event_1 = features[features_sorted_by_photon_pt[-1],:]
-    event_2 = features[features_sorted_by_photon_pt[0],:]
-    event_3 = features[features_sorted_by_photon_pt[int(len(features)/2)],:]
-
-    print("Test prediction for a couple of events")
-    for event in [event_1, event_2, event_3]:
-        print(event)
-        print(information_trees[0].predict(event))
-        print(information_trees[1].predict(event))

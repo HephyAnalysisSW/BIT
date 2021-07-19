@@ -11,6 +11,7 @@ from math import log
 xmin  = 20
 xmax  = 420 
 alpha = 3
+theta0 = alpha # define same variable in all models for plotting
 pT0   = 100
 texX  = "p_{T} [GeV]"
 model = ROOT.TF1("model", "x^(-{alpha})".format(alpha=alpha), xmin,xmax)

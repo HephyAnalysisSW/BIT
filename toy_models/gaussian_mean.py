@@ -8,6 +8,7 @@ import ROOT
 # Definition of the model
 ## exponential
 mu    = 0
+theta0 = mu # define same variable in all models for plotting
 sigma = 1.
 xmin  = -4
 xmax  = 4 

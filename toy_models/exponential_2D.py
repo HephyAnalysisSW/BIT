@@ -10,6 +10,7 @@ from math import sqrt
 ## exponential
 pT0   = 25.
 alpha = 1./100
+theta0 = alpha # define same variable in all models for plotting
 xmin  = 20
 xmax  = 420 
 ymin  = 20
