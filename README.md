@@ -33,16 +33,19 @@ Python3
 Training and test data from different toy models (e.g., exponential, power law) is readily available in the data directory as compressed text files to be loaded with NumPy.
 
 ```python
-    data_dir = 'data'
-    training_features = np.loadtxt('%s/training_features_power_law_model.txt.gz' % data_dir)
-    training_features = training_features.reshape(training_features.shape[0], -1)
-    training_weights = np.loadtxt('%s/training_weights_power_law_model.txt.gz' % data_dir)
-    training_diff_weights = np.loadtxt('%s/training_diff_weights_power_law_model.txt.gz' % data_dir)
+data_dir = 'data'
+def load_data(name):
+    return np.loadtxt('%s/%s.txt.gz' % (data_dir, name))
+
+features = load_data('training_features_power_law_model')
+features = features.reshape(features.shape[0], -1)
+weights = load_data('training_weights_power_law_model')
+diffs = load_data('training_diff_weights_power_law_model')
 ```
 
 ### Hyperparameters
 
-Hyperparameters for the weak learners are the maximum depth of the corresponding decision tree *max_depth* and its minimum number of events in each terminal nodes *min_sizes. The boosting uses a series of *n_tree* learners to approximate the score, where each weak learner contributes only a fraction to the cumulative score prediction, described by the *learning_rate*.
+Hyperparameters for the weak learners are the maximum depth of the corresponding decision tree *max_depth* and its minimum number of events in each terminal nodes *min_sizes. The boosting uses a series of *n_tree* learners to approximate the score, where each weak learner contributes only a fraction to the cumulative score prediction, described by the *learning_rate*. *calibrated* describes whether the score should be normalized to values between 0 and 1.
 
 ```python
     learning_rate = 0.02
@@ -50,22 +53,35 @@ Hyperparameters for the weak learners are the maximum depth of the corresponding
     learning_rate = 0.2 
     max_depth     = 2
     min_size      = 50
+    calibrated    = False
 ```
 
 ### Training
 
-The actual training is performed by the following call on a *BoostedInformationTree* object. For Python3, the separate version *BoostedInformationTreeP3* needs to used.
-```python3
+The actual training is performed by the following call on a *BoostedInformationTree* object. For Python3, the separate version *BoostedInformationTreeP3* needs to be used.
+```python
     bit = BoostedInformationTree(
-            training_features = training_features,
+            training_features     = training_features,
             training_weights      = training_weights, 
             training_diff_weights = training_diff_weights, 
-            learning_rate = learning_rate, 
-            n_trees = n_trees,
-            max_depth=max_depth,
-            min_size=min_size)
+            learning_rate         = learning_rate, 
+            n_trees               = n_trees,
+            max_depth             = max_depth,
+            min_size              = min_size,
+            calibrated            = True)
 
     bit.boost()
+```
+
+### Predictions
+Finally, the trained boosted information tree can be used to predict the score for a given feature vector or an array of feature vectors:
+
+```python
+test_feat = load_data('test_features_power_law_model')
+test_feat = test_feat.reshape(test_feat.shape[0], -1)
+
+bit.predict(test_feat[0]) # returns one prediction
+bit.vectorized_predict(test_feat) # returns all predictions
 ```
 
 Full examples including plots of theoretical and learned score functions of several toy models and evolution of the Fisher information of the training iterations are presented in a [Demo Jupyter Notebook](bit_p3_demo.ipynb)
