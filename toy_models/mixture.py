@@ -8,52 +8,71 @@ class ComponentPDF:
     def __init__(self):
         pass
 
+    @staticmethod
+    def product_parameters( alpha, beta):
+
+        return tuple(map(sum, zip(alpha, beta)))
+
 class Exp1D(ComponentPDF):
     ''' normalized exp pdf '''
-    def __init__( self, alpha, x0, xmax):
-        self.alpha = float(alpha)
-        self.x0    = float(x0)
-        self.xmax  = float(xmax)
-        self.string = "{alpha}/(exp(-{x0}*{alpha})-exp(-{xmax}*{alpha}))*exp(-(x-{x0})*({alpha}))".format(alpha=self.alpha, x0=self.x0, xmax = self.xmax)
-        self.tf1 = ROOT.TF1("pdf", self.string, x0, xmax)
+    def __init__( self, parameters, support):
+        self.parameters = parameters
+        self.support    = support 
+        self.string = "{alpha}/(exp(-{x0}*{alpha})-exp(-{xmax}*{alpha}))*exp(-(x-{x0})*({alpha}))".format(alpha=float(parameters[0]), x0=float(support[0]), xmax = float(support[1]))
+        self.tf1 = ROOT.TF1("pdf", self.string, *support)
 
     def eval( self, features ):
         return self.tf1.Eval(features[0])
 
-    @staticmethod
-    def product_norm_factor( alpha, beta, support):
-        a = (alpha)/(exp(-support[0]*alpha)-exp(-support[1]*alpha))
-        b = (beta)/(exp(-support[0]*beta)-exp(-support[1]*beta))
-        aPb = (alpha+beta)/(exp(-support[0]*(alpha+beta))-exp(-support[1]*(alpha+beta)))
+#    @staticmethod
+#    def product_norm_factor( alpha, beta, support):
+#        a = (alpha)/(exp(-support[0]*alpha)-exp(-support[1]*alpha))
+#        b = (beta)/(exp(-support[0]*beta)-exp(-support[1]*beta))
+#        aPb = (alpha+beta)/(exp(-support[0]*(alpha+beta))-exp(-support[1]*(alpha+beta)))
+#
+#        return (a*b)/aPb
 
-        return (a*b)/aPb
+    def getEvents( self, n ):
+        return np.array(list(self.tf1.GetRandom() for i in range(n))).reshape((-1,1))
 
-    @staticmethod
-    def product_parameters( alpha, beta):
-        return alpha+beta
+class Exp2D(ComponentPDF):
+    ''' normalized exp pdf '''
+    def __init__( self, parameters, support):
+        self.parameters = parameters
+        self.support     = support 
+        self.string = "{alpha1}/(exp(-{x0}*{alpha1})-exp(-{xmax}*{alpha1}))*{alpha2}/(exp(-{y0}*{alpha2})-exp(-{ymax}*{alpha2}))*exp(-(x-{x0})*({alpha1})-(y-{y0})*({alpha2})".format(alpha1=float(parameters[0]), alpha2=float(parameters[1]), x0=float(support[0]), xmax=float(support[1]), y0=float(support[2]), ymax=float(support[3]))
+        self.tf1 = ROOT.TF2("pdf", self.string, *support)
+
+    def eval( self, features ):
+        return self.tf1.Eval(features[0])
+
+#    @staticmethod
+#    def product_norm_factor( alpha, beta, support):
+#        a = (alpha)/(exp(-support[0]*alpha)-exp(-support[1]*alpha))
+#        b = (beta)/(exp(-support[0]*beta)-exp(-support[1]*beta))
+#        aPb = (alpha+beta)/(exp(-support[0]*(alpha+beta))-exp(-support[1]*(alpha+beta)))
+#
+#        return (a*b)/aPb
+
 
     def getEvents( self, n ):
         return np.array(list(self.tf1.GetRandom() for i in range(n))).reshape((-1,1))
 
 class Pow1D(ComponentPDF):
     ''' normalized power-law pdf '''
-    def __init__( self, alpha, x0, xmax):
-        self.alpha = float(alpha)
-        self.x0    = float(x0)
-        self.xmax  = float(xmax)
-        self.string = "({alpha}-1.)/({x0}-{xmax}*({x0}/{xmax})**({alpha}))*(x/({x0}))**(-{alpha})".format(alpha=self.alpha, x0=self.x0, xmax = self.xmax)
-        self.tf1 = ROOT.TF1("pdf", self.string, x0, xmax)
+    def __init__( self, parameters, support):
+        self.parameters = parameters
+        self.support    = support 
+        self.string = "({alpha}-1.)/({x0}-{xmax}*({x0}/{xmax})**({alpha}))*(x/({x0}))**(-{alpha})".format(alpha=float(parameters[0]), x0=float(support[0]), xmax=float(support[1]))
+
+        self.tf1 = ROOT.TF1("pdf", self.string, *support)
     
     def eval( self, features ):
         return self.tf1.Eval(features[0])
 
-    @staticmethod
-    def product_norm_factor( self, alpha, beta):
-        return ((-support[0]**(alpha + beta)*support[1] + support[0]*support[1]**(alpha + beta))*(-1 + alpha)*(-1 + beta))/((-support[0]**alpha*support[1] + support[0]*support[1]**alpha)*(-support[0]**beta*support[1] +  support[0]*support[1]**beta)*(-1 + alpha + beta))
-
-    @staticmethod
-    def product_parameters( alpha, beta):
-        return alpha+beta
+#    @staticmethod
+#    def product_norm_factor( self, alpha, beta):
+#        return ((-support[0]**(alpha + beta)*support[1] + support[0]*support[1]**(alpha + beta))*(-1 + alpha)*(-1 + beta))/((-support[0]**alpha*support[1] + support[0]*support[1]**alpha)*(-support[0]**beta*support[1] +  support[0]*support[1]**beta)*(-1 + alpha + beta))
 
     def getEvents( self, n ):
         return np.array(list(self.tf1.GetRandom() for i in range(n))).reshape((-1,1))
@@ -73,9 +92,13 @@ class Quadratic1DMixturePDF:
         for pair in itertools.combinations_with_replacement( range(self.n_pdf), 2 ):
             self.combinatorical_factors = np.append( self.combinatorical_factors, (1 if pair[0]==pair[1] else 2 ) )
             self.combinations           = np.concatenate((self.combinations, np.array([list(pair)])))
-
-        self.combination_pdfs = [ self.pdf(self.pdf.product_parameters(self.parameters[combination[0]], self.parameters[combination[1]]), *self.support) for combination in self.combinations]
-        self.pdfs             = { (i,j): self.pdf(self.pdf.product_parameters(parameters[i], parameters[j]), *self.support) for i in range(len(parameters)) for j in range(len(parameters)) }
+        #for combination in self.combinations:
+        #    print combination, self.parameters[combination[0]], self.parameters[combination[1]], self.pdf.product_parameters(self.parameters[combination[0]], self.parameters[combination[1]])
+        self.combination_pdfs = [ self.pdf(self.pdf.product_parameters(self.parameters[combination[0]], self.parameters[combination[1]]), self.support) for combination in self.combinations]
+        #for i in range(len(parameters)):
+        #    for j in range(len(parameters)):
+        #        print parameters[i], parameters[j], self.pdf.product_parameters(parameters[i], parameters[j])
+        self.pdfs             = { (i,j): self.pdf(self.pdf.product_parameters(parameters[i], parameters[j]), self.support) for i in range(len(parameters)) for j in range(len(parameters)) }
 
     @staticmethod
     def tilde( theta ):
@@ -123,29 +146,24 @@ class Quadratic1DMixturePDF:
 
         # weights
         numerators   = np.dot(  comb_factors*probabilities, theta_tilde_combproducts)
-        weights      = numerators/denominators 
+        weights      = {tuple():numerators/denominators} 
 
         # first derivatives
-        weights_first_derivatives  = np.array( [ [sum([ 2*theta_tilde_j*self.pdfs[(i,j)].eval(feature) for j, theta_tilde_j in enumerate(theta_tilde) ]) for feature in features] for i in range(1,len(theta_tilde))]) / denominators
+        weights.update( {(i-1,):np.array( [sum([ 2*theta_tilde_j*self.pdfs[(i,j)].eval(feature) for j, theta_tilde_j in enumerate(theta_tilde) ]) for feature in features]) / denominators for i in range(1,len(theta_tilde))} )
 
         # second derivatives
-
-        #weights_second_derivatives = 2*comb_factors*probabilities/denominators.reshape((-1,1))
-        #weights_second_derivatives = {(comb[0]-1,comb[1]-1):weights_second_derivatives[:,i_comb] for i_comb,comb in enumerate(self.combinations) if 0 not in comb} 
-
-        #weights_second_derivatives  = np.array( [ [sum([ 2*self.pdfs[(i,j)].eval(feature) for j, theta_tilde_j in enumerate(theta_tilde) ]) for feature in features] for i in range(1,len(theta_tilde))]) / denominators
-        weights_second_derivatives = {(comb[0]-1,comb[1]-1):np.array([2*self.pdfs[tuple(comb)].eval(feature) for feature in features])/denominators for i_comb,comb in enumerate(self.combinations) if 0 not in comb} 
-        return weights, weights_first_derivatives, weights_second_derivatives 
+        weights.update( {(comb[0]-1,comb[1]-1):np.array([2*self.pdfs[tuple(comb)].eval(feature) for feature in features])/denominators for i_comb,comb in enumerate(self.combinations) if 0 not in comb} )
+        return weights 
 
 
 if __name__=="__main__":
-    support    = [0,5]
-    pdf        = Exp1D 
-    parameters = [1,1,1]
+    support    = [1,5]
+    pdf        = Pow1D 
+    parameters = [(1,),(1,),(1,)]
     theta_ref  = [0,0]
-    theta      = [1,2]
     mixturePDF = Quadratic1DMixturePDF( pdf, parameters, support )
 
     features = mixturePDF.getEvents(20, theta_ref = theta_ref)
 
-    weights, weights_first_derivatives, weights_second_derivatives = mixturePDF.getWeights( features, theta = theta, theta_ref = theta_ref)
+    theta      = [0,0]
+    weights  = mixturePDF.getWeights( features, theta = theta, theta_ref = theta_ref)
