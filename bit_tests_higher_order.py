@@ -68,10 +68,8 @@ theta      = [0]
 
 mixturePDF = model.QuadraticMixturePDF( pdf, parameters, support )
 
-training_features = mixturePDF.getEvents(args.nTraining, theta_ref = theta_ref)
-
+training_features = mixturePDF.getEvents(  args.nTraining, theta_ref = theta_ref)
 training_weights  = mixturePDF.getWeights( training_features, theta = theta, theta_ref = theta_ref)
-
 
 # Text on the plots
 def drawObjects( offset=0 ):
@@ -115,58 +113,58 @@ def plot1DHist( plot, plot_directory, yRange=(0.3,"auto"), ratio={'yRange':(0.1,
                        copyIndexPHP = True,
                        )
 
-###############
-## Plot Model #
-###############
-
-bsm_colors = [ROOT.kBlack, ROOT.kBlue, ROOT.kGreen, ROOT.kMagenta, ROOT.kCyan]
-
-# Let's plot the model so that Niki sees the hypothesis.
-Nbins = 80
-h_BSM = {theta:ROOT.TH1F("h_BSM", "h_BSM", Nbins, xmin, xmax) for theta in plot_theta_values}
-h_theory = {theta:ROOT.TH1F("h_theory", "h_theory", Nbins, xmin, xmax) for theta in plot_theta_values}
-
-for i_theta, theta in enumerate(plot_theta_values):
-    weights_BSM = mixturePDF.getWeights( training_features, theta = theta, theta_ref = theta_ref, only_weights = True) 
-    for i in range(args.nTraining):
-        h_BSM[theta].Fill( training_features[i], weights_BSM[i] )
-
-    h_BSM[theta].style = styles.lineStyle( bsm_colors[i_theta], width=2, dashed=False )
-    h_BSM[theta].Scale(Nbins/(xmax-xmin)/h_BSM[theta].Integral())
-    #h_BSM[theta].Scale(1./args.nTraining)
-    #h_BSM[theta].Scale(1./mixturePDF.sigma(theta))
-    h_BSM[theta].legendText = "#theta=%s"%str(theta)
-    
-    for i_bin in range(1,h_theory[theta].GetNbinsX()+1):
-        h_theory[theta].SetBinContent( i_bin, mixturePDF.eval( theta, [h_theory[theta].GetBinLowEdge(i_bin)] ))
-        h_theory[theta].style = styles.lineStyle( bsm_colors[i_theta], width=2, dashed=True )
-        #h_theory[theta].Scale(1./h_theory[theta].Integral())
-        h_theory[theta].legendText = "p(x|#theta=%s)"%str(theta)
-
-
-# Plot of model and theory 
-histos = []
-for theta in plot_theta_values:
-    histos.append([h_theory[theta]])
-    histos.append([h_BSM[theta]])
-
-plot   = Plot.fromHisto( "model",  histos, texX="x", texY="a.u." )
-
-# Plot Style
-histModifications      = [] #lambda h: h.GetYaxis().SetTitleOffset(2.2) ]
-histModifications += [ lambda h: h.GetXaxis().SetTitleSize(26) ]
-histModifications += [ lambda h: h.GetYaxis().SetTitleSize(26) ]
-histModifications += [ lambda h: h.GetXaxis().SetLabelSize(22)  ]
-histModifications += [ lambda h: h.GetYaxis().SetLabelSize(22)  ]
-
-ratioHistModifications = [] #lambda h: h.GetYaxis().SetTitleOffset(2.2) ]
-ratio                  = None #{'yRange':(0.51,1.49), 'texY':"BSM/SM", "histModifications":ratioHistModifications}
-legend                 = [(0.2,0.74,0.6,0.88),2]
-yRange                 = (0.00003, "auto")
-#    yRange                 = (0, "auto")
-
-plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, histModifications=histModifications )
-
+################
+### Plot Model #
+################
+#
+#bsm_colors = [ROOT.kBlack, ROOT.kBlue, ROOT.kGreen, ROOT.kMagenta, ROOT.kCyan]
+#
+## Let's plot the model so that Niki sees the hypothesis.
+#Nbins = 80
+#h_BSM = {theta:ROOT.TH1F("h_BSM", "h_BSM", Nbins, xmin, xmax) for theta in plot_theta_values}
+#h_theory = {theta:ROOT.TH1F("h_theory", "h_theory", Nbins, xmin, xmax) for theta in plot_theta_values}
+#
+#for i_theta, theta in enumerate(plot_theta_values):
+#    weights_BSM = mixturePDF.getWeights( training_features, theta = theta, theta_ref = theta_ref, only_weights = True) 
+#    for i in range(args.nTraining):
+#        h_BSM[theta].Fill( training_features[i], weights_BSM[i] )
+#
+#    h_BSM[theta].style = styles.lineStyle( bsm_colors[i_theta], width=2, dashed=False )
+#    h_BSM[theta].Scale(Nbins/(xmax-xmin)/h_BSM[theta].Integral())
+#    #h_BSM[theta].Scale(1./args.nTraining)
+#    #h_BSM[theta].Scale(1./mixturePDF.sigma(theta))
+#    h_BSM[theta].legendText = "sampled #theta=%s"%str(theta)
+#    
+#    for i_bin in range(1,h_theory[theta].GetNbinsX()+1):
+#        h_theory[theta].SetBinContent( i_bin, mixturePDF.eval( theta, [h_theory[theta].GetBinLowEdge(i_bin)] ))
+#        h_theory[theta].style = styles.lineStyle( bsm_colors[i_theta], width=2, dashed=True )
+#        #h_theory[theta].Scale(1./h_theory[theta].Integral())
+#        h_theory[theta].legendText = "p(x|#theta=%s)"%str(theta)
+#
+#
+## Plot of model and theory 
+#histos = []
+#for theta in plot_theta_values:
+#    histos.append([h_theory[theta]])
+#    histos.append([h_BSM[theta]])
+#
+#plot   = Plot.fromHisto( "model",  histos, texX="x", texY="a.u." )
+#
+## Plot Style
+#histModifications      = [] #lambda h: h.GetYaxis().SetTitleOffset(2.2) ]
+#histModifications += [ lambda h: h.GetXaxis().SetTitleSize(26) ]
+#histModifications += [ lambda h: h.GetYaxis().SetTitleSize(26) ]
+#histModifications += [ lambda h: h.GetXaxis().SetLabelSize(22)  ]
+#histModifications += [ lambda h: h.GetYaxis().SetLabelSize(22)  ]
+#
+#ratioHistModifications = [] #lambda h: h.GetYaxis().SetTitleOffset(2.2) ]
+#ratio                  = None #{'yRange':(0.51,1.49), 'texY':"BSM/SM", "histModifications":ratioHistModifications}
+#legend                 = [(0.2,0.74,0.8,0.88),2]
+#yRange                 = (0.00003, "auto")
+##    yRange                 = (0, "auto")
+#
+#plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, histModifications=histModifications )
+#
 #######################
 ### Plot some regions #
 #######################
@@ -213,303 +211,153 @@ plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, his
 #
 #plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, histModifications=histModifications )
 
-###############
-###############
-#
-#
-## Boosting
-#time1 = time.time()
-#
-## BIT config
-#n_trees       = 50
-#max_depth     = 2
-#learning_rate = 0.20
-#min_size      = 100
-#n_plot        = 5
-#
-#bit= BoostedInformationTree(
-#        training_features     = training_features,
-#        training_weights      = training_weights,
-#        training_diff_weights = training_diff_weights,
-#        learning_rate         = learning_rate,
-#        n_trees               = n_trees,
-#        max_depth             = max_depth,
-#        min_size              = min_size,
-#        split_method          = 'vectorized_split_and_weight_sums',
-#        weights_update_method = 'vectorized',
-#        calibrated            = False,
-#            )
-#
-#bit.boost()
-#
-##bit.save('tmp.pkl')
-##bit = BoostedInformationTree.load('tmp.pkl')
-#
-#time2 = time.time()
-#boosting_time = time2 - time1
-#print "Boosting time: %.2f seconds" % boosting_time
-#
-#
-## Testing
-#test_features, test_weights, test_diff_weights = model.get_dataset( args.nTraining )
-#
-#training_profile     = ROOT.TProfile("trainP", "trainP",         8, model.xmin, model.xmax)
-#test_profile         = ROOT.TProfile("testP",  "testP",          8, model.xmin, model.xmax)
-#training_BSM_profile = ROOT.TProfile("BSM_trainP", "BSM_trainP", 8, model.xmin, model.xmax)
-#test_BSM_profile     = ROOT.TProfile("BSM_testP",  "BSM_testP",  8, model.xmin, model.xmax)
-#
-#training     = ROOT.TH1D("train", "train",          8, model.min_score_theory, model.max_score_theory )
-#test         = ROOT.TH1D("test",  "test",           8, model.min_score_theory, model.max_score_theory )
-#training_BSM = ROOT.TH1D("BSM_train", "BSM_train",  8, model.min_score_theory, model.max_score_theory )
-#test_BSM     = ROOT.TH1D("BSM_test",  "BSM_test",   8, model.min_score_theory, model.max_score_theory )
-#
-#training_FI_histo     = ROOT.TH1D("trainFI", "trainFI",          n_trees, 1, n_trees+1 )
-#test_FI_histo         = ROOT.TH1D("testFI",  "testFI",           n_trees, 1, n_trees+1 )
-#
-#test_FIs            = np.zeros(n_trees)
-#training_FIs        = np.zeros(n_trees)
-#test_FIs_lowPt      = np.zeros(n_trees)
-#training_FIs_lowPt  = np.zeros(n_trees)
-#test_FIs_highPt     = np.zeros(n_trees)
-#training_FIs_highPt = np.zeros(n_trees)
-#
-#for i in range(args.nTraining):
-#    test_scores     = bit.predict( test_features[i],     summed = False)
-#    training_scores = bit.predict( training_features[i], summed = False)
-#
-#    test_score  = sum( test_scores )
-#    train_score = sum( training_scores )
-#
-#    test_profile    .Fill(      test_features[i][0],     test_score,   test_weights[i] )
-#    training_profile.Fill(      training_features[i][0], train_score,  training_weights[i] )
-#    test_BSM_profile    .Fill(  test_features[i][0],     test_score,   test_weights[i]+args.theta*test_diff_weights[i] )
-#    training_BSM_profile.Fill(  training_features[i][0], train_score,  training_weights[i]+args.theta*training_diff_weights[i] )
-#    test    .Fill(       test_score, test_weights[i])
-#    training.Fill(       train_score, training_weights[i])
-#    test_BSM    .Fill(   test_score,  test_weights[i]+args.theta*test_diff_weights[i])
-#    training_BSM.Fill(   train_score, training_weights[i]+args.theta*training_diff_weights[i])
-#
-#    # compute test and training FI evolution during training
-#    test_FIs     += test_diff_weights[i]*test_scores
-#    training_FIs += training_diff_weights[i]*training_scores
-#    if test_features[i][0]<args.lowPtThresh:
-#        test_FIs_lowPt          += test_diff_weights[i]*test_scores
-#    if training_features[i][0]<args.lowPtThresh:
-#        training_FIs_lowPt      += training_diff_weights[i]*training_scores
-#    if test_features[i][0]>args.highPtThresh:
-#        test_FIs_highPt         += test_diff_weights[i]*test_scores
-#    if training_features[i][0]>args.highPtThresh:
-#        training_FIs_highPt     += training_diff_weights[i]*training_scores
-#
-#
-#######################
-## Plot Score Profile #
-#######################
-#
-## Histo style
-#training_profile.style = styles.lineStyle( ROOT.kBlue, width=2, dashed=True )
-#test_profile    .style = styles.lineStyle( ROOT.kBlue, width=2 )
-#training_BSM_profile.style = styles.lineStyle( ROOT.kRed, width=2, dashed=True )
-#test_BSM_profile    .style = styles.lineStyle( ROOT.kRed, width=2 )
-#
-#training_profile.legendText = "Training (#theta_{0})"
-#test_profile    .legendText = "Test (#theta_{0})"
-#training_BSM_profile.legendText = "Training (#theta_{0}+#Delta#theta)"
-#test_BSM_profile    .legendText = "Test (#theta_{0}+#Delta#theta)"
-#
-## Plot of hypothesis
-#histos = [ [training_profile], [test_profile], [training_BSM_profile], [test_BSM_profile] ]
-#plot   = Plot.fromHisto( "score_profile_validation_profile",  histos, texX=model.texX, texY="F(x)" )
-#
-## Plot Style
-#histModifications      = [ lambda h: h.GetYaxis().SetTitleOffset(1.4) ]
-#histModifications += [ lambda h: h.GetXaxis().SetTitleSize(26) ]
-#histModifications += [ lambda h: h.GetYaxis().SetTitleSize(26) ]
-#histModifications += [ lambda h: h.GetXaxis().SetLabelSize(22)  ]
-#histModifications += [ lambda h: h.GetYaxis().SetLabelSize(22)  ]
-#
-#ratioHistModifications = []
-#ratio                  = None
-#legend                 = (0.55,0.6,0.9,0.9)
-#minY                   = model.min_score_theory
-#maxY                   = model.max_score_theory
-#yRange                 = (minY, maxY)
-#
-##plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, lumi=args.luminosity, plotLog=False, histModifications=histModifications )
-#
-###############
-###############
-#
-#
-##########################
-## Plot Score Validation #
-##########################
-#
-## Histo style
-#training.style = styles.lineStyle( ROOT.kBlue, width=2, dashed=True )
-#test    .style = styles.lineStyle( ROOT.kBlue, width=2 )
-#training_BSM.style = styles.lineStyle( ROOT.kRed, width=2, dashed=True )
-#test_BSM    .style = styles.lineStyle( ROOT.kRed, width=2 )
-#
-#training.legendText = "Training (#theta_{0})"
-#test    .legendText = "Test (#theta_{0})"
-#training_BSM.legendText = "Training (#theta_{0}+#Delta#theta)"
-#test_BSM    .legendText = "Test (#theta_{0}+#Delta#theta)"
-#
-#test.Scale(1./training.Integral())
-#test_BSM.Scale(1./training_BSM.Integral())
-#training.Scale(1./training.Integral())
-#training_BSM.Scale(1./training_BSM.Integral())
-#
-## Plot of hypothesis
-#histos = [ [training], [test], [training_BSM], [test_BSM] ]
-#
-#plot   = Plot.fromHisto( "score_validation",  histos, texX="F(x)", texY="a.u." )
-#
-## Plot Style
-#histModifications      = []
-#histModifications += [ lambda h: h.GetXaxis().SetTitleSize(26) ]
-#histModifications += [ lambda h: h.GetYaxis().SetTitleSize(26) ]
-#histModifications += [ lambda h: h.GetXaxis().SetLabelSize(22)  ]
-#histModifications += [ lambda h: h.GetYaxis().SetLabelSize(22)  ]
-#
-#ratioHistModifications = []
-#ratio                  = None
-#legend                 = (0.2,0.64,0.6,0.88)
-#minY                   =  1
-#maxY                   = (10 if model.make_log else 2.2)*max( map( lambda h:h.GetMaximum(), [training, test, training_BSM, test_BSM] ) )
-#yRange                 = (0,"auto") #( minY, maxY )
-#
-#plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, lumi=args.luminosity, histModifications=histModifications )
-#
-###############
-###############
-#
-#
-###################
-## Plot Evolution #
-###################
-#
-#for name, texName, test_FIs_, training_FIs_ in [
-#        ("all", "", test_FIs, training_FIs),
-##        ("lowPt", ", p_{T}< %i GeV"%args.lowPtThresh, test_FIs_lowPt, training_FIs_lowPt),
-##        ("highPt", ", p_{T} > %i GeV"%args.highPtThresh, test_FIs_highPt, training_FIs_highPt),
-#        ]:
-#    for i_tree in range(n_trees):
-#        test_FI_histo    .SetBinContent( i_tree+1, -sum(test_FIs_[:i_tree]) )
-#        training_FI_histo.SetBinContent( i_tree+1, -sum(training_FIs_[:i_tree]) )
-#
-#    # Histo style
-#    test_FI_histo    .style = styles.lineStyle( ROOT.kBlue, width=2 )
-#    training_FI_histo.style = styles.lineStyle( ROOT.kRed, width=2 )
-#    test_FI_histo    .legendText = "Test%s"%texName
-#    training_FI_histo.legendText = "Training%s"%texName
-#
-#    minY   = 0.01 * min( test_FI_histo.GetBinContent(test_FI_histo.GetMaximumBin()), training_FI_histo.GetBinContent(training_FI_histo.GetMaximumBin()))
-#    maxY   = 1.5  * max( test_FI_histo.GetBinContent(test_FI_histo.GetMaximumBin()), training_FI_histo.GetBinContent(training_FI_histo.GetMaximumBin()))
-#
-#    histos = [ [test_FI_histo], [training_FI_histo] ]
-#    plot   = Plot.fromHisto( "FI_evolution_%s"%name,  histos, texX="b", texY="L(D,b)" )
-#
-#    # Plot Style
-#    histModifications      = []
-#    histModifications      += [ lambda h: h.GetYaxis().SetTitleOffset(1.4) ]
-#    histModifications += [ lambda h: h.GetXaxis().SetTitleSize(26) ]
-#    histModifications += [ lambda h: h.GetYaxis().SetTitleSize(26) ]
-#    histModifications += [ lambda h: h.GetXaxis().SetLabelSize(22)  ]
-#    histModifications += [ lambda h: h.GetYaxis().SetLabelSize(22)  ]
-#
-#    ratioHistModifications = []
-#    ratio                  = None
-#    if name == "all":
-#        legend                 = (0.6,0.75,0.9,0.88)
-##        legend                 = (0.6, 0.2, 0.9, 0.32)
-#    elif args.model == "power_law" and name == "highPt":
-#        legend                 = (0.2,0.75,0.7,0.88)
-#    else:
-#        legend                 = (0.4, 0.2, 0.9, 0.4)
-#    yRange                 = "auto" #( minY, maxY )
-#
-#    plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, lumi=args.luminosity, plotLog=False, titleOffset=0.08, histModifications=histModifications )
-#
-###############
-###############
-#
-#
-###############
-## Plot Score #
-###############
-#
-## Make a histogram from the score function (1D)
-#def score_histo( bit, title, max_n_tree = None):
-#    h = ROOT.TH1F(str(title), str(title), 400, model.xmin, model.xmax)
-#    for i in range(1, h.GetNbinsX()+1):
-#        h.SetBinContent( i, bit.predict([h.GetBinLowEdge(i)], max_n_tree = max_n_tree, last_tree_counts_full=False))
-#    return copy.deepcopy(h.Clone())
-#
-## Histo style
-#histos = []
-#histos.append( [model.score_theory] )
-#histos[-1][0].style      = styles.lineStyle( ROOT.kRed, width=2 )
-#histos[-1][0].legendText = "t(x|#theta_{0})"
-#
-## empty slot in the legend
-#empty = score_histo( bit, "empty", max_n_tree=0 )
-#empty.Scale(0)
-#histos.append( [empty] )
-#histos[-1][0].style      = styles.lineStyle( ROOT.kWhite, width=0 )
-#histos[-1][0].legendText = " "
-#
-#counter=0
-#colors = [8,30,38,9,13]
-#for n_tree in range(bit.n_trees):
-#    if bit.n_trees <= n_plot or n_tree%(bit.n_trees/n_plot) == 0:
-#
-#        histos.append( [score_histo( bit, str(counter), max_n_tree=n_tree )] )
-#        histos[-1][0].style      = styles.lineStyle( colors[counter], width=3 )
-#        histos[-1][0].legendText = "F^{(%i)}"%(n_tree)
-#        counter+=1
-#
-#histos.append( [score_histo( bit, "full" )] )
-#histos[-1][0].style      = styles.lineStyle( ROOT.kBlack, width=3 )
-#histos[-1][0].legendText = "F^{(%i)}"%(n_tree+1)
-#
-## Plot of hypothesis
-#plot   = Plot.fromHisto( "score_boosted",  histos, texX="x", texY="F(x)" )
-#
-## Plot Style
-#histModifications      = []
-#histModifications += [ lambda h: h.GetXaxis().SetTitleSize(26) ]
-#histModifications += [ lambda h: h.GetYaxis().SetTitleSize(26) ]
-#histModifications += [ lambda h: h.GetXaxis().SetLabelSize(22)  ]
-#histModifications += [ lambda h: h.GetYaxis().SetLabelSize(22)  ]
-#
-#ratioHistModifications = []
-#ratio                  = None
-#minY                   = model.min_score_theory
-#maxY                   = model.max_score_theory
-#if args.model == "power_law":
-#    legend                 = [(0.6,0.63,0.85,0.9),2]
-#elif args.model == "gaussian_width":
-#    legend                 = [(0.42,0.6,0.67,0.87),2]
-#    minY                   = -1
-#    maxY                   = 17
-#elif args.model == "gaussian_mean":
-#    legend                 = [(0.2,0.6,0.45,0.87),2]
-#elif args.model == "piece_wise":
-#    legend                 = [(0.65,0.15,0.9,0.5),2]
-#    minY                   = -0.4
-#    maxY                   = 0.25
-#elif args.model == "mixture1D":
-#    legend                 = [(0.2,0.45,0.45,0.73),2]
-#else:
-#    legend                 = [(0.2,0.15,0.45,0.43),2]
-#yRange                 = (minY, maxY)
-#
-#plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, lumi=args.luminosity, plotLog=False, histModifications=histModifications )
-#
-###############
-###############
-#
-#
-#
+##############
+##############
+
+# Boosting
+n_trees       = 50
+max_depth     = 2
+learning_rate = 0.20
+min_size      = 50
+n_plot        = 10
+
+test_features = mixturePDF.getEvents( args.nTraining, theta_ref = theta_ref)
+test_weights  = mixturePDF.getWeights( test_features, theta = theta, theta_ref = theta_ref)
+
+bits = {}
+for derivative in training_weights.keys():
+    if derivative == tuple(): continue
+
+    filename = "bit_mixture_derivative_%i"%derivative if len(derivative)==1 else "bit_mixture_derivative_%i_%i"%derivative
+    try:
+        print "Loading %s for %r"%( filename, derivative)
+        bits[derivative] = BoostedInformationTree.load(filename+'.pkl')
+    except IOError:
+        time1 = time.time()
+        print "Learning %s"%( str(derivative))
+        bits[derivative]= BoostedInformationTree(
+                training_features     = training_features,
+                training_weights      = training_weights[tuple()],
+                training_diff_weights = training_weights[derivative],
+                learning_rate         = learning_rate,
+                n_trees               = n_trees,
+                max_depth             = max_depth,
+                min_size              = min_size,
+                split_method          = 'vectorized_split_and_weight_sums',
+                weights_update_method = 'vectorized',
+                calibrated            = False,
+                    )
+        bits[derivative].boost()
+        bits[derivative].save(filename+'.pkl')
+        print "Written %s"%( filename )
+
+        time2 = time.time()
+        boosting_time = time2 - time1
+        print "Boosting time: %.2f seconds" % boosting_time
+
+        # plot loss
+        test_scores     = bits[derivative].vectorized_predict(test_features)
+        training_scores = bits[derivative].vectorized_predict(test_features)
+        max_score = max(test_scores)
+        min_score = min(test_scores)
+
+        test_FIs            = np.zeros(n_trees)
+        training_FIs        = np.zeros(n_trees)
+
+        for i in range(args.nTraining):
+            test_scores     = bits[derivative].predict( test_features[i],     summed = False)
+            training_scores = bits[derivative].predict( training_features[i], summed = False)
+
+            test_score  = sum( test_scores )
+            train_score = sum( training_scores )
+
+            # compute test and training FI evolution during training
+            test_FIs     += test_weights[derivative][i]*test_scores
+            training_FIs += training_weights[derivative][i]*training_scores
+
+        training_FI_histo     = ROOT.TH1D("trainFI", "trainFI",          n_trees, 1, n_trees+1 )
+        test_FI_histo         = ROOT.TH1D("testFI",  "testFI",           n_trees, 1, n_trees+1 )
+
+        for i_tree in range(n_trees):
+            test_FI_histo    .SetBinContent( i_tree+1, -sum(test_FIs[:i_tree]) )
+            training_FI_histo.SetBinContent( i_tree+1, -sum(training_FIs[:i_tree]) )
+
+        # Histo style
+        test_FI_histo    .style = styles.lineStyle( ROOT.kBlue, width=2 )
+        training_FI_histo.style = styles.lineStyle( ROOT.kRed, width=2 )
+        test_FI_histo    .legendText = "Test"
+        training_FI_histo.legendText = "Training"
+
+        minY   = 0.01 * min( test_FI_histo.GetBinContent(test_FI_histo.GetMaximumBin()), training_FI_histo.GetBinContent(training_FI_histo.GetMaximumBin()))
+        maxY   = 1.5  * max( test_FI_histo.GetBinContent(test_FI_histo.GetMaximumBin()), training_FI_histo.GetBinContent(training_FI_histo.GetMaximumBin()))
+
+        histos = [ [test_FI_histo], [training_FI_histo] ]
+        plot   = Plot.fromHisto( filename+"_evolution", histos, texX="b", texY="L(D,b)" )
+
+        # Plot Style
+        histModifications      = []
+        histModifications      += [ lambda h: h.GetYaxis().SetTitleOffset(1.4) ]
+        histModifications += [ lambda h: h.GetXaxis().SetTitleSize(26) ]
+        histModifications += [ lambda h: h.GetYaxis().SetTitleSize(26) ]
+        histModifications += [ lambda h: h.GetXaxis().SetLabelSize(22)  ]
+        histModifications += [ lambda h: h.GetYaxis().SetLabelSize(22)  ]
+
+        ratioHistModifications = []
+        ratio                  = None
+        legend                 = (0.6,0.75,0.9,0.88)
+        yRange                 = "auto" #( minY, maxY )
+
+        plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, plotLog=False, titleOffset=0.08, histModifications=histModifications )
+
+histos_weights = [] 
+histos_scores  = [] 
+Nbins             = 8
+derivative_colors = [ROOT.kBlack, ROOT.kBlue, ROOT.kGreen, ROOT.kMagenta, ROOT.kCyan]
+i_derivative      = 0
+
+derivatives = sorted(test_weights.keys())[1:]
+
+for derivative in derivatives:
+    h_w = ROOT.TH1F("h_w", "h_w", 8, xmin, xmax)
+    h_w.style      = styles.lineStyle(derivative_colors[i_derivative], dashed = True)
+    h_w.legendText = "weights der: %s"%(str(derivative))
+    histos_weights.append(h_w)
+    h_s = ROOT.TH1F("h_w", "h_w", 8, xmin, xmax)
+    h_s.style      = styles.lineStyle(derivative_colors[i_derivative])
+    h_s.legendText = "scores der: %s"%(str(derivative))
+    histos_scores.append(h_s)
+    i_derivative   += 1
+
+for i_bin in range(Nbins):
+    bin = (xmin + i_bin*(xmax-xmin)/float(Nbins), xmin + (i_bin+1)*(xmax-xmin)/float(Nbins))
+    print "Working at bin", bin
+    mask   = (test_features[:,0]>bin[0])&(test_features[:,0]<bin[1]) 
+    events = test_features[mask,:]
+
+    for i_derivative, derivative in enumerate(derivatives):
+
+        print "bin", bin, "derivative", derivative
+
+        event_weights = test_weights[derivative][mask]
+        event_scores = bits[derivative].vectorized_predict(events)
+
+        histos_weights[i_derivative].SetBinContent( i_bin+1, event_weights.sum()/len(event_weights) )
+        histos_scores [i_derivative].SetBinContent( i_bin+1, event_scores.sum()/len(event_scores) )
+
+histos = [[h] for h in histos_weights] + [[h] for h in histos_scores]
+plot   = Plot.fromHisto( "coefficients", histos, texX="x", texY="coefficient" )
+
+# Plot Style
+histModifications      = []
+histModifications      += [ lambda h: h.GetYaxis().SetTitleOffset(1.4) ]
+histModifications += [ lambda h: h.GetXaxis().SetTitleSize(26) ]
+histModifications += [ lambda h: h.GetYaxis().SetTitleSize(26) ]
+histModifications += [ lambda h: h.GetXaxis().SetLabelSize(22)  ]
+histModifications += [ lambda h: h.GetYaxis().SetLabelSize(22)  ]
+
+ratioHistModifications = []
+ratio                  = None
+legend                 = (0.6,0.75,0.9,0.88)
+yRange                 = "auto" #( minY, maxY )
+
+plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, plotLog=False, titleOffset=0.08, histModifications=histModifications )
