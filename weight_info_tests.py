@@ -2,6 +2,7 @@
 
 import unittest
 import numpy as np
+import pandas as pd
 import time
 import uproot
 
@@ -30,19 +31,55 @@ class TestWeightInfo(unittest.TestCase):
 
                 # Load all weights and reshape the array according to ndof from weightInfo
                 weights     = tree.pandas.df(branches = ["p_C"], entrystart=entrystart, entrystop=entrystop).values.reshape((-1,w.nid))
+                #df_weights = tree.pandas.df(branches = ["p_C"], entrystart=entrystart, entrystop=entrystop)
                 print(weights.shape)
 
                 min_size = 10000
 
                 assert len(features)==len(weights), "Need equal length for weights and features."
 
-                #FI_func = lambda coeffs: w.get_fisherInformation_matrix( coeffs, variables = ['cWWW'], cWWW=1)[1][0][0]
+                time_weights_1 = time.time()
                 weight_mask = w.get_weight_mask( cWWW=1 )
-                diff_weight_mask = w.get_diff_mask( 'cWWW', cWWW=1 )
-
-                #TODO:
                 training_weights         = np.dot(weights, w.get_weight_mask(cWWW=1))
-                training_diff_weights    = np.dot(weights, w.get_diff_mask('cWWW', cWWW=1))
+                time_weights_2 = time.time()
+                print "weights calc time vec: %.4f seconds" % (time_weights_2 - time_weights_1)
+
+                # unvectorized diff weights
+                time_unvec_diff_weights_1 = time.time()
+                diff_weight_calculator = w.get_diff_weight_func('cWWW', cWWW=1)
+                unvec_training_diff_weights = np.apply_along_axis(diff_weight_calculator, axis=1, arr=weights)
+                time_unvec_diff_weights_2 = time.time()
+                print(unvec_training_diff_weights.shape)
+                print "diff weights calc time uvec: %.4f seconds" % (time_unvec_diff_weights_2 - time_unvec_diff_weights_1)
+
+                # vectorized diff weights
+                time_vec_diff_weights_1 = time.time()
+                diff_weight_mask = w.get_diff_mask( 'cWWW', cWWW=1 )
+                training_diff_weights    = np.dot(weights, diff_weight_mask)
+                time_vec_diff_weights_2 = time.time()
+                print(training_diff_weights.shape)
+                print "diff weights calc time vec: %.4f seconds" % (time_vec_diff_weights_2 - time_vec_diff_weights_1)
+
+                np.testing.assert_almost_equal(training_diff_weights, unvec_training_diff_weights)
+
+                # unvectorized double diff weights
+                time_unvec_double_diff_weights_1 = time.time()
+                double_diff_weight_calculator = w.get_double_diff_weight_func('cWWW', cWWW=1)
+                unvec_training_double_diff_weights = np.apply_along_axis(double_diff_weight_calculator, axis=1, arr=weights)
+                time_unvec_double_diff_weights_2 = time.time()
+                print(unvec_training_double_diff_weights.shape)
+                print "double diff weights calc time unvec: %.4f seconds" % (time_unvec_double_diff_weights_2 - time_unvec_double_diff_weights_1)
+
+                # vectorized double diff weights
+                time_vec_diff_weights_1 = time.time()
+                double_diff_weight_mask = w.get_double_diff_mask( 'cWWW', cWWW=1 )
+                training_double_diff_weights    = np.dot(weights, double_diff_weight_mask)
+                time_vec_diff_weights_2 = time.time()
+                print(training_double_diff_weights.shape)
+                print "double diff weights calc time vec: %.4f seconds" % (time_vec_diff_weights_2 - time_vec_diff_weights_1)
+
+                np.testing.assert_almost_equal(training_double_diff_weights, unvec_training_double_diff_weights)
+
 
 if __name__ == '__main__':
     unittest.main()
