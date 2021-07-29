@@ -181,7 +181,7 @@ bit.boost()
 
 time2 = time.time()
 boosting_time = time2 - time1
-print "Boosting time: %.2f seconds" % boosting_time
+print ("Boosting time: %.2f seconds" % boosting_time)
 
 
 # Testing
