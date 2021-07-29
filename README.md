@@ -6,7 +6,7 @@ Loss Evolution Boosting             |  Learned Score 2D Model
 :-------------------------:|:-------------------------:
 ![](figures/evolution_loss.png)  |  ![](figures/learned_score_2d.png)
 
-More information can be found soon in the accompanying publication as preprint on arXiv.
+The accompanying publication can be found as [preprint on arXiv](https://arxiv.org/abs/2107.10859).
 
 ## Example Use of Algorithm
 

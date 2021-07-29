@@ -118,7 +118,7 @@ h_SM.Scale(1./h_SM.Integral())
 h_BSM.style = styles.lineStyle( ROOT.kBlue, width=2, dashed=True )
 h_BSM.Scale(1./h_BSM.Integral())
 
-if args.model == "exponential":
+if args.model == "exponential" or "mixture":
     h_SM.legendText = "#theta_{0}=%.2f"%model.theta0
     h_BSM.legendText = "#theta_{0}+#Delta#theta, #Delta#theta=%.3f"%args.theta
 else:
@@ -434,6 +434,8 @@ elif args.model == "piece_wise":
     legend                 = [(0.65,0.15,0.9,0.5),2]
     minY                   = -0.4
     maxY                   = 0.25
+elif args.model == "mixture1D":
+    legend                 = [(0.2,0.45,0.45,0.73),2]
 else:
     legend                 = [(0.2,0.15,0.45,0.43),2]
 yRange                 = (minY, maxY)
