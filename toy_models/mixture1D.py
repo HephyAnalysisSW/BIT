@@ -12,11 +12,11 @@ x0    = 20.
 alpha1 = 2./100
 alpha2 = 1./100
 theta0 = 0 
-xmin  = 20
-xmax  = 220 
+xmin  = 20.
+xmax  = 220. 
 texX  = "x"
 model = ROOT.TF1("model", "(2*(exp(-((x-{x0})*{alpha1})) + {theta}/exp((x-{x0})*{alpha2}))**2)/(1./{alpha1} + {theta}*(4./({alpha1} + {alpha2}) + {theta}/{alpha2}))".format(x0=x0,alpha1=alpha1,alpha2=alpha2, theta=theta0), xmin, xmax)
-score_theory     = ROOT.TF1("score_theory", "((1/alpha1 + theta*(4/(alpha1 + alpha2) + theta/alpha2))*((-2*(exp(-((x - x0)*alpha1)) + theta/exp((x - x0)*alpha2))**2*(4/(alpha1 + alpha2) + (2*theta)/alpha2))/ (1/alpha1 + theta*(4/(alpha1 + alpha2) + theta/alpha2))**2 + (4*(exp(-((x - x0)*alpha1)) + theta/exp((x - x0)*alpha2)))/(exp((x - x0)*alpha2)*(1/alpha1 + theta*(4/(alpha1 + alpha2) + theta/alpha2)))))/(2.*(exp(-((x - x0)*alpha1)) + theta/exp((x - x0)*alpha2))**2)".format(x0=x0,alpha1=alpha1,alpha2=alpha2, theta=theta0), xmin, xmax)
+score_theory     = ROOT.TF1("score_theory", "((1/{alpha1} + {theta}*(4/({alpha1} + {alpha2}) + {theta}/{alpha2}))*((-2*(exp(-((x - {x0})*{alpha1})) + {theta}/exp((x - {x0})*{alpha2}))**2*(4/({alpha1} + {alpha2}) + (2*{theta})/{alpha2}))/ (1/{alpha1} + {theta}*(4/({alpha1} + {alpha2}) + {theta}/{alpha2}))**2 + (4*(exp(-((x - {x0})*{alpha1})) + {theta}/exp((x - {x0})*{alpha2})))/(exp((x - {x0})*{alpha2})*(1/{alpha1} + {theta}*(4/({alpha1} + {alpha2}) + {theta}/{alpha2})))))/(2.*(exp(-((x - {x0})*{alpha1})) + {theta}/exp((x - {x0})*{alpha2}))**2)".format(x0=x0,alpha1=alpha1,alpha2=alpha2, theta=theta0), xmin, xmax)
 min_score_theory = min( score_theory.Eval(xmin), score_theory.Eval(xmax) )
 max_score_theory = max( score_theory.Eval(xmin), score_theory.Eval(xmax) ) 
 
@@ -29,13 +29,13 @@ min_size      = 50
 n_plot = 10 # Plot every tenth
 
 weighted      = False
-id_string     = "pT0%i-nTrees%i-exponential"%(pT0, n_trees)
+id_string     = "x0%i-nTrees%i-mixture1D"%(x0, n_trees)
 if weighted:id_+='-weighted'
 
 def get_sampled_dataset( n_events ):
     features = np.array( [ [model.GetRandom(xmin, xmax)] for i in range(n_events)] )
     weights       = np.array( [1 for i in range(n_events)] ) 
-    diff_weights  = np.array( [ ( ((1./alpha1 + theta0*(4./(alpha1 + alpha2) + theta0/alpha2))*((-2.*(exp(-((x - x0)*alpha1)) + theta0/exp((x - x0)*alpha2))**2*(4./(alpha1 + alpha2) + (2*theta0)/alpha2))/(1./alpha1 + theta0*(4./(alpha1 + alpha2) + theta0/alpha2))**2 + (4.*(exp(-((x - x0)*alpha1)) + theta0/exp((x - x0)*alpha2)))/(exp((x - x0)*alpha2)*(1/alpha1 + theta0*(4./(alpha1 + alpha2) + theta0/alpha2)))))/ (2.*(exp(-((x - x0)*alpha1)) + theta0/exp((x - x0)*alpha2))**2)) for i in range(n_events)] )
+    diff_weights  = np.array( [ ( ((1./alpha1 + theta0*(4./(alpha1 + alpha2) + theta0/alpha2))*((-2.*(exp(-((features[i][0]- x0)*alpha1)) + theta0/exp((features[i][0]- x0)*alpha2))**2*(4./(alpha1 + alpha2) + (2*theta0)/alpha2))/(1./alpha1 + theta0*(4./(alpha1 + alpha2) + theta0/alpha2))**2 + (4.*(exp(-((features[i][0]- x0)*alpha1)) + theta0/exp((features[i][0]- x0)*alpha2)))/(exp((features[i][0]- x0)*alpha2)*(1/alpha1 + theta0*(4./(alpha1 + alpha2) + theta0/alpha2)))))/ (2.*(exp(-((features[i][0]- x0)*alpha1)) + theta0/exp((features[i][0]- x0)*alpha2))**2)) for i in range(n_events)] )
     return features, weights, diff_weights
 #def get_weighted_dataset( n_events ):
 #    features = np.array( [ [xmin+random.random()*(xmax-xmin)] for i in range(n_events)] )
