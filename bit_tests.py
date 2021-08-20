@@ -7,7 +7,7 @@ import random
 import cProfile
 import time
 import os, sys
-from math import log, exp
+from math import log, exp, sqrt
 import copy
 
 # RootTools
@@ -39,14 +39,29 @@ argParser.add_argument("--nTraining",          action="store",      default=1000
 argParser.add_argument("--luminosity",         action="store",      default=137,           type=int,                                         help="luminosity value, currently only for plot label")
 argParser.add_argument("--lowPtThresh",        action="store",      default=50,            type=int,                                         help="low pt threshold")
 argParser.add_argument("--highPtThresh",       action="store",      default=200,           type=int,                                         help="high pt threshold")
+argParser.add_argument("--fraction_alpha",     action="store",      default=1,             type=float,                                       help="Move information to this fraction of the events (for overtraining study)")
 args = argParser.parse_args()
 
 # import the toy model
 import toy_models as models
 model = getattr( models, args.model )
 
+# Produce training data set
+training_features, training_weights, training_diff_weights = model.get_dataset( args.nTraining )
+
+# Move the whole information into a fraction 'fraction_alpha' of events
+model_postfix = ''
+if args.fraction_alpha>0 and args.fraction_alpha<1:
+    bool_arr = np.zeros(len(training_features), dtype=bool)
+    bool_arr[:int(round(args.fraction_alpha*len(training_features)))] = True
+    random.shuffle(bool_arr)
+    training_diff_weights[bool_arr]  = training_diff_weights[bool_arr]/args.fraction_alpha
+    training_diff_weights[~bool_arr] = 0.
+
+    model_postfix = "_alpha%4.4f"%args.fraction_alpha
+
 # directory for plots
-plot_directory = os.path.join( user_plot_directory, args.plot_directory, model.id_string )
+plot_directory = os.path.join( user_plot_directory, args.plot_directory, model.id_string + model_postfix )
 
 if not os.path.isdir(plot_directory):
     os.makedirs( plot_directory )
@@ -54,8 +69,6 @@ if not os.path.isdir(plot_directory):
 # initiate plot
 Plot.setDefaults()
 
-# Produce training data set
-training_features, training_weights, training_diff_weights = model.get_dataset( args.nTraining )
 
 # Text on the plots
 def drawObjects( lumi, offset=0 ):
@@ -207,6 +220,16 @@ training_FIs_lowPt  = np.zeros(n_trees)
 test_FIs_highPt     = np.zeros(n_trees)
 training_FIs_highPt = np.zeros(n_trees)
 
+
+# Weight variance measure
+VM            = ROOT.TH1D("VM", "VM", 20, model.xmin, model.xmax)
+VMwp_den      = ROOT.TH1D("VMwp_den", "VMwp_den", 20, model.xmin, model.xmax)
+VM_den        = ROOT.TH1D("VM_den", "VM_den", 20, model.xmin, model.xmax)
+
+VM_test       = ROOT.TH1D("VM_test", "VM_test", 20, model.xmin, model.xmax)
+VM_testwp_den = ROOT.TH1D("VM_testwp_den", "VM_testwp_den", 20, model.xmin, model.xmax)
+VM_test_den   = ROOT.TH1D("VM_test_den", "VM_test_den", 20, model.xmin, model.xmax)
+
 for i in range(args.nTraining):
     test_scores     = bit.predict( test_features[i],     summed = False)
     training_scores = bit.predict( training_features[i], summed = False)
@@ -235,6 +258,129 @@ for i in range(args.nTraining):
     if training_features[i][0]>args.highPtThresh:
         training_FIs_highPt     += training_diff_weights[i]*training_scores
 
+    # compute VM = sum(w'^2/w) / (sum(w')^2/sum(w) ) - 1
+    if training_weights[i]!=0:
+        VM.Fill(      training_features[i][0], training_diff_weights[i]**2/training_weights[i]) 
+        VMwp_den.Fill(training_features[i][0], training_diff_weights[i]) 
+        VM_den.Fill(  training_features[i][0], training_weights[i]) 
+    if test_weights[i]!=0:
+        VM_test.Fill(       test_features[i][0], test_diff_weights[i]**2/test_weights[i]) 
+        VM_testwp_den.Fill( test_features[i][0], test_diff_weights[i]) 
+        VM_test_den.Fill(   test_features[i][0], test_weights[i]) 
+
+for i_bin in range(1, 1+VM.GetNbinsX() ):
+    if VM_den.GetBinContent(i_bin)!=0 and VMwp_den.GetBinContent(i_bin):
+        #VM.SetBinContent( i_bin, -1+VM.GetBinContent(i_bin)/(VMwp_den.GetBinContent(i_bin)**2/VM_den.GetBinContent(i_bin)))
+        VM.SetBinContent( i_bin, (VMwp_den.GetBinContent(i_bin)**2/VM_den.GetBinContent(i_bin))/VM.GetBinContent(i_bin))
+    else:
+        VM.SetBinContent( i_bin, 0.)
+for i_bin in range(1, 1+VM_test.GetNbinsX() ):
+    if VM_test_den.GetBinContent(i_bin)!=0 and VM_testwp_den.GetBinContent(i_bin):
+        VM_test.SetBinContent( i_bin, (VM_testwp_den.GetBinContent(i_bin)**2/VM_test_den.GetBinContent(i_bin))/VM_test.GetBinContent(i_bin))
+        #print i_bin, VM_test.GetBinContent(i_bin), VM_testwp_den.GetBinContent(i_bin)**2, VM_test_den.GetBinContent(i_bin), VM_test.GetBinContent(i_bin)/(VM_testwp_den.GetBinContent(i_bin)**2/VM_test_den.GetBinContent(i_bin)) 
+        #print i_bin, VM.GetBinContent(i_bin), VM_test.GetBinContent(i_bin)
+    else:
+        VM_test.SetBinContent( i_bin, 0.)
+
+########################
+# Plot Weight Variance #
+########################
+
+# Histo style
+VM.style = styles.lineStyle( ROOT.kRed, width=2, dashed=True )
+VM_test.style = styles.lineStyle( ROOT.kBlue, width=2, dashed=True )
+VM.legendText      = "Training (#alpha_f=%4.4f)"%args.fraction_alpha
+VM_test.legendText = "Test"
+
+#VMwp_den.style = styles.lineStyle( ROOT.kRed, width=2, dashed=True )
+#VM_testwp_den.style = styles.lineStyle( ROOT.kBlue, width=2, dashed=True )
+#VMwp_den.legendText      = "Training (#alpha_f=%4.4f)"%args.fraction_alpha
+#VM_testwp_den.legendText = "Test"
+#
+#VM_den.style = styles.lineStyle( ROOT.kRed, width=2, dashed=True )
+#VM_test_den.style = styles.lineStyle( ROOT.kBlue, width=2, dashed=True )
+#VM_den.legendText      = "Training (#alpha_f=%4.4f)"%args.fraction_alpha
+#VM_test_den.legendText = "Test"
+
+# Plot of hypothesis
+
+# Plot Style
+histModifications      = [ lambda h: h.GetYaxis().SetTitleOffset(1.4) ]
+histModifications += [ lambda h: h.GetXaxis().SetTitleSize(26) ]
+histModifications += [ lambda h: h.GetYaxis().SetTitleSize(26) ]
+histModifications += [ lambda h: h.GetXaxis().SetLabelSize(22)  ]
+histModifications += [ lambda h: h.GetYaxis().SetLabelSize(22)  ]
+
+ratioHistModifications = []
+ratio                  = None
+legend                 = (0.5,0.65,0.9,0.9)
+
+plot = Plot.fromHisto( "VM",  [ [VM], [VM_test] ], texX=model.texX, texY="VM" )
+plot1DHist( plot,  plot_directory, yRange="auto", ratio=ratio, legend=legend, lumi=args.luminosity, plotLog=False, histModifications=histModifications )
+#plot = Plot.fromHisto( "VM_den",  [ [VM_den], [VM_test_den] ])
+#plot1DHist( plot, plot_directory, yRange="auto", ratio=ratio, legend=legend, lumi=args.luminosity, plotLog=False, histModifications=histModifications )
+#plot1DHist( plot, plot_directory, yRange="auto", ratio=ratio, legend=legend, lumi=args.luminosity, plotLog=True, histModifications=histModifications )
+#plot = Plot.fromHisto( "VMwp_den",  [ [VMwp_den], [VM_testwp_den] ])
+#plot1DHist( plot, plot_directory, yRange="auto", ratio=ratio, legend=legend, lumi=args.luminosity, plotLog=False, histModifications=histModifications )
+#plot1DHist( plot, plot_directory, yRange="auto", ratio=ratio, legend=legend, lumi=args.luminosity, plotLog=True, histModifications=histModifications )
+
+######################################
+# Stat uncertainty of score function #
+######################################
+
+n_bins = 20
+
+JN        = ROOT.TH1D("JN", "JN", n_bins, model.xmin, model.xmax)
+JN_test   = ROOT.TH1D("JN_test", "JN_test", n_bins, model.xmin, model.xmax)
+
+JN_rel        = ROOT.TH1D("JN_rel", "JN_rel", n_bins, model.xmin, model.xmax)
+JN_rel_test   = ROOT.TH1D("JN_rel_test", "JN_rel_test", n_bins, model.xmin, model.xmax)
+
+digi   = np.digitize(training_features[:,0], np.arange(model.xmin, model.xmax, (model.xmax-model.xmin)/float(n_bins)))
+for n_bin in range(1,n_bins+1):
+    events = digi==n_bin
+    n      = np.sum(events)
+    all_but_one      = ( -training_diff_weights[events]+np.sum(training_diff_weights[events]) ) / (-training_weights[events]+np.sum(training_weights[events]) )
+    mean_all_but_one = np.mean(all_but_one)
+    uncertainty = sqrt( (n-1.)/n*( np.sum( ( all_but_one-mean_all_but_one)**2 ) )  )
+    JN.SetBinContent( n_bin, uncertainty )
+    JN_rel.SetBinContent( n_bin, uncertainty/np.sum(training_weights[events]) )
+digi   = np.digitize(test_features[:,0], np.arange(model.xmin, model.xmax, (model.xmax-model.xmin)/float(n_bins)))
+for n_bin in range(1,n_bins+1):
+    events = digi==n_bin
+    n      = np.sum(events)
+    all_but_one      = ( -test_diff_weights[events]+np.sum(test_diff_weights[events]) ) / (-test_weights[events]+np.sum(test_weights[events]) )
+    mean_all_but_one = np.mean(all_but_one)
+    uncertainty = sqrt( (n-1.)/n*( np.sum( ( all_but_one-mean_all_but_one)**2 ) )  )
+    JN_test.SetBinContent( n_bin, uncertainty )
+    JN_rel_test.SetBinContent( n_bin, uncertainty/np.sum(test_weights[events]) )
+
+JN.style = styles.lineStyle( ROOT.kRed, width=2, dashed=True )
+JN_test.style = styles.lineStyle( ROOT.kBlue, width=2, dashed=True )
+JN.legendText      = "Training (#alpha_f=%4.4f)"%args.fraction_alpha
+JN_test.legendText = "Test"
+JN_rel.style = styles.lineStyle( ROOT.kRed, width=2, dashed=True )
+JN_rel_test.style = styles.lineStyle( ROOT.kBlue, width=2, dashed=True )
+JN_rel.legendText      = "Training (#alpha_f=%4.4f)"%args.fraction_alpha
+JN_rel_test.legendText = "Test"
+
+# Plot Style
+histModifications      = [ lambda h: h.GetYaxis().SetTitleOffset(1.4) ]
+histModifications += [ lambda h: h.GetXaxis().SetTitleSize(26) ]
+histModifications += [ lambda h: h.GetYaxis().SetTitleSize(26) ]
+histModifications += [ lambda h: h.GetXaxis().SetLabelSize(22)  ]
+histModifications += [ lambda h: h.GetYaxis().SetLabelSize(22)  ]
+
+ratioHistModifications = []
+ratio                  = None
+legend                 = (0.5,0.65,0.9,0.9)
+
+plot = Plot.fromHisto( "JN",  [ [JN], [JN_test] ], texX=model.texX, texY="JN" )
+plot1DHist( plot,  plot_directory, yRange="auto", ratio=ratio, legend=legend, lumi=args.luminosity, plotLog=False, histModifications=histModifications )
+plot1DHist( plot,  plot_directory, yRange="auto", ratio=ratio, legend=legend, lumi=args.luminosity, plotLog=True, histModifications=histModifications )
+plot = Plot.fromHisto( "JN_rel",  [ [JN_rel], [JN_rel_test] ], texX=model.texX, texY="JN_rel" )
+plot1DHist( plot,  plot_directory, yRange="auto", ratio=ratio, legend=legend, lumi=args.luminosity, plotLog=False, histModifications=histModifications )
+plot1DHist( plot,  plot_directory, yRange="auto", ratio=ratio, legend=legend, lumi=args.luminosity, plotLog=True, histModifications=histModifications )
 
 ######################
 # Plot Score Profile #
