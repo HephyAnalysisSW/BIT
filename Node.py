@@ -2,6 +2,7 @@
 
 import numpy as np
 import operator 
+from math import sqrt
 
 class Node:
     def __init__( self, features, max_depth, min_size, training_weights, training_diff_weights, split_method="vectorized_split_and_weight_sums", depth=0):
@@ -41,7 +42,16 @@ class Node:
 
         if sum_==0.: return 0
 
-        return sum_diff_/sum_ 
+        return sum_diff_/sum_
+
+    def jackknife_score_relative_uncertainty( self, group):
+        n      = np.sum(group)
+        training_diff_weights_group_sum = np.sum(self.training_diff_weights[group])
+        training_weights_group_sum      = np.sum(self.training_weights[group])
+        all_but_one      = ( -self.training_diff_weights[group]+training_diff_weights_group_sum ) / (-self.training_weights[group]+training_weights_group_sum )
+        mean_all_but_one = np.mean(all_but_one)
+        uncertainty      = sqrt( (n-1.)/n*( np.sum( ( all_but_one-mean_all_but_one)**2 ) )  )
+        return uncertainty/training_weights_group_sum 
 
     # compute the total FI from a set of booleans defining the 'left' box and (by negation) the 'right' box
     def FI_from_group( self, group):
@@ -164,7 +174,6 @@ class Node:
         total_diff_weight_sum    = sorted_weight_diff_sums[-1]
         sorted_weight_sums       = sorted_weight_sums[0:-1]
         sorted_weight_diff_sums  = sorted_weight_diff_sums[0:-1]
-
         fisher_information_left  = sorted_weight_diff_sums*sorted_weight_diff_sums/sorted_weight_sums 
         fisher_information_right = (total_diff_weight_sum-sorted_weight_diff_sums)*(total_diff_weight_sum-sorted_weight_diff_sums)/(total_weight_sum-sorted_weight_sums) 
 
@@ -192,6 +201,8 @@ class Node:
             'FI'  :  lambda group: self.FI_from_group(group),
             'score': lambda group: self.score_from_group(group)
             }
+
+        #print "left", self.jackknife_score_relative_uncertainty(self.split_left_group), "right", self.jackknife_score_relative_uncertainty(~self.split_left_group)
 
         # check for max depth or a 'no' split
         if  self.max_depth <= depth+1 or (not any(self.split_left_group)) or all(self.split_left_group): # Jason Brownlee starts counting depth at 1, we start counting at 0, hence the +1
