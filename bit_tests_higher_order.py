@@ -230,11 +230,11 @@ for derivative in training_weights.keys():
 
     filename = "bit_mixture_derivative_%i"%derivative if len(derivative)==1 else "bit_mixture_derivative_%i_%i"%derivative
     try:
-        print "Loading %s for %r"%( filename, derivative)
+        print ("Loading %s for %r"%( filename, derivative))
         bits[derivative] = BoostedInformationTree.load(filename+'.pkl')
     except IOError:
         time1 = time.time()
-        print "Learning %s"%( str(derivative))
+        print ("Learning %s"%( str(derivative)))
         bits[derivative]= BoostedInformationTree(
                 training_features     = training_features,
                 training_weights      = training_weights[tuple()],
@@ -249,11 +249,11 @@ for derivative in training_weights.keys():
                     )
         bits[derivative].boost()
         bits[derivative].save(filename+'.pkl')
-        print "Written %s"%( filename )
+        print ("Written %s"%( filename ))
 
         time2 = time.time()
         boosting_time = time2 - time1
-        print "Boosting time: %.2f seconds" % boosting_time
+        print ("Boosting time: %.2f seconds" % boosting_time)
 
         # plot loss
         test_scores     = bits[derivative].vectorized_predict(test_features)
@@ -330,13 +330,13 @@ for derivative in derivatives:
 
 for i_bin in range(Nbins):
     bin = (xmin + i_bin*(xmax-xmin)/float(Nbins), xmin + (i_bin+1)*(xmax-xmin)/float(Nbins))
-    print "Working at bin", bin
+    print ("Working at bin", bin)
     mask   = (test_features[:,0]>bin[0])&(test_features[:,0]<bin[1]) 
     events = test_features[mask,:]
 
     for i_derivative, derivative in enumerate(derivatives):
 
-        print "bin", bin, "derivative", derivative
+        print ("bin", bin, "derivative", derivative)
 
         event_weights = test_weights[derivative][mask]
         event_scores = bits[derivative].vectorized_predict(events)
