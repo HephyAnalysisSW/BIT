@@ -189,7 +189,7 @@ class Node:
         #tic = time.time()
         if self.split_method == "python_loop":
             self.get_split_fast()
-        elif self.split_method == "vectorized_split" or self.split_method == "vectorized_split_and_weight_sums":
+        elif self.split_method == "vectorized_split_and_weight_sums":
             self.get_split_vectorized()
         else:
             raise ValueError("no such split method %s" % self.split_method)
