@@ -25,6 +25,7 @@ class Node:
         self.split_method = split_method
 
         self.split(depth=depth)
+        self.prune()
 
         # Let's not leak the dataset.
         del self.training_weights
@@ -179,7 +180,7 @@ class Node:
         #tic = time.time()
         if self.split_method == "python_loop":
             self.get_split_fast()
-        elif self.split_method == "vectorized_split" or self.split_method == "vectorized_split_and_weight_sums":
+        elif self.split_method == "vectorized_split_and_weight_sums":
             self.get_split_vectorized()
         else:
             raise ValueError("no such split method %s" % self.split_method)
@@ -261,6 +262,18 @@ class Node:
             predictions[eval(expression)] = prediction
     
         return predictions    
+
+    # remove the 'inf' splits
+    def prune( self ):
+        if not isinstance(self.left, ResultNode) and self.left.split_value==float('+inf'):
+            self.left = self.left.left
+        elif not isinstance(self.left, ResultNode):
+            self.left.prune()
+        if not isinstance(self.right, ResultNode) and self.right.split_value==float('+inf'):
+            self.right = self.right.left
+        elif not isinstance(self.right, ResultNode):
+            self.right.prune()
+
 
     # Print a decision tree
     def print_tree(self, key = 'FI', depth=0):
