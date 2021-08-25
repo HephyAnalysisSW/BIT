@@ -5,11 +5,15 @@ import operator
 from math import sqrt
 
 class Node:
-    def __init__( self, features, max_depth, min_size, training_weights, training_diff_weights, split_method="vectorized_split_and_weight_sums", depth=0):
+    def __init__( self, features, max_depth, min_size, training_weights, training_diff_weights, split_method="vectorized_split_and_weight_sums", _depth=0, max_relative_score_uncertainty=0):
 
         ## basic BDT configuration
         self.max_depth  = max_depth
         self.min_size   = min_size
+
+        # minimum statistical uncertainty
+        self.max_relative_score_uncertainty = max_relative_score_uncertainty
+        assert self.max_relative_score_uncertainty==0 or split_method == "iterative_split_and_weight_sums", "max_relative_score_uncertainty argument only for split_method=iterative_split_and_weight_sums"
 
         # data set
         self.features   = features
@@ -22,10 +26,10 @@ class Node:
         self.size       = len(self.features)
 
         # keep track of recursion depth
-        self.depth      = depth
+        self._depth      = _depth
         self.split_method = split_method
 
-        self.split(depth=depth)
+        self.split(_depth=_depth)
         self.prune()
 
         # Let's not leak the dataset.
@@ -45,8 +49,9 @@ class Node:
 
         return sum_diff_/sum_
 
-    def jackknife_score_relative_uncertainty( self, group):
+    def jackknife_score_relative_uncertainty(self, group):
         n      = np.sum(group)
+        if n<=1: return 0
         training_diff_weights_group_sum = np.sum(self.training_diff_weights[group])
         training_weights_group_sum      = np.sum(self.training_weights[group])
         all_but_one      = ( -self.training_diff_weights[group]+training_diff_weights_group_sum ) / (-self.training_weights[group]+training_weights_group_sum )
@@ -79,8 +84,8 @@ class Node:
         group = feature_values>=value
         return self.FI_from_group( group )
 
-    def get_split_fast( self ):
-        ''' determine where to split the features
+    def get_split_python_loop( self ):
+        ''' determine where to split the features (python loop)
         '''
 
         # loop over the features ... assume the features consists of rows with [x1, x2, ...., xN]
@@ -168,6 +173,9 @@ class Node:
                 self.split_gain     = gain
 
         assert not np.isnan(self.split_value)
+
+        #print self.split_i_feature, self.split_value, self.split_gain
+
         self.split_left_group = self.features[:,self.split_i_feature]<=self.split_value if not  np.isnan(self.split_value) else np.ones(len(self.features), dtype='bool')
 
     def find_split_vectorized(self, sorted_weight_sums, sorted_weight_diff_sums, plateau_and_split_range_mask):
@@ -179,18 +187,159 @@ class Node:
         fisher_information_right = (total_diff_weight_sum-sorted_weight_diff_sums)*(total_diff_weight_sum-sorted_weight_diff_sums)/(total_weight_sum-sorted_weight_sums) 
 
         fisher_gains = fisher_information_left + fisher_information_right
+        #print fisher_gains, fisher_information_left, fisher_information_right
         argmax_fi = np.argmax(np.nan_to_num(fisher_gains)*plateau_and_split_range_mask)
         return argmax_fi, fisher_gains[argmax_fi]
 
+    @staticmethod
+    def quantile_thresholds(  n_threshold ):
+        q = np.arange(0,1,1./max(n_threshold-1,1))
+        q = np.append(q, [1.])
+        return q
+
+    def get_split_iterative( self ):
+        ''' determine where to split the features by iteratively chopping up the sorted events
+        '''
+
+        # loop over the features ... assume the features consists of rows with [x1, x2, ...., xN]
+        self.split_i_feature, self.split_value, self.split_gain, self.split_left_group = 0, -float('inf'), 0, None
+
+        # for a valid binary split, we need at least twice the mean size
+        assert self.size >= 2*self.min_size
+
+        # quantiles every, e.g., 5%. The "0" and "1" quantile contain the events chopped off at the "low" and "high" thresholds
+        n_threshold = 4
+        n_threshold = min(n_threshold, len(self.features))
+        q = self.quantile_thresholds(n_threshold)
+        #print "quantile thresholds:", len(q), q
+
+        # compute the totals
+        weight_sum      = np.sum(self.training_weights)
+        weight_diff_sum = np.sum(self.training_diff_weights)
+
+        for i_feature in range(len(self.features[0])):
+
+            # inititalize
+            features                = self.features[:,i_feature]
+            args_sorted             = np.argsort(features)
+
+            training_weights        = self.training_weights
+            training_diff_weights   = self.training_diff_weights
+
+            # chop off low & high end
+            weight_sum_low          = np.sum(self.training_weights[args_sorted[:self.min_size]])
+            weight_diff_sum_low     = np.sum(self.training_diff_weights[args_sorted[:self.min_size]])
+
+            # special case: 2x min_size, i.e. nothing to look for
+            if self.size == 2*self.min_size:
+                gain = 0
+                if weight_sum_low>0:
+                    gain+= weight_diff_sum_low**2/weight_sum_low
+                if weight_sum - weight_sum_low>0:
+                    gain+= ( weight_diff_sum - weight_diff_sum_low)**2/(weight_sum-weight_sum_low)
+                if gain > self.split_gain: 
+                    self.split_i_feature = i_feature
+                    self.split_value     = features[args_sorted[self.min_size]]
+                    self.split_gain      = gain 
+                continue
+
+            # initial interval should be valid because we have at least 2x min_size events
+            args_sorted             = args_sorted[self.min_size:-self.min_size] if self.min_size>0 else args_sorted
+            last_round = len(args_sorted)<=len(q)
+            counter    = 0
+
+            remove_low, remove_high = 0, 0
+
+            while True:
+
+                remove_high = -remove_high if remove_high>0 else None 
+                args_sorted = args_sorted[remove_low: remove_high]
+
+                #print "Total:",len(digitized_features), "remove low:", remove_low, "remove_high",remove_high, "keep",np.count_nonzero(digitized_features[digitized_features==argmax_fi]),np.count_nonzero(digitized_features[digitized_features==argmax_fi+1])
+
+                if len(args_sorted)<=n_threshold: 
+                    last_round = True
+                    n_threshold= len(args_sorted)
+                    q = self.quantile_thresholds(n_threshold)
+
+                quantiles          = np.quantile( features[args_sorted], q, interpolation='nearest')
+
+                # Removing the quantiles with too high relative stat uncertainty in the score
+                if self.max_relative_score_uncertainty>0:
+                    #print "Removing quantiles "
+                    for i_quantile, quantile in reversed(list(enumerate(quantiles))):
+                        group = features<quantile
+                        #print np.count_nonzero(group), np.count_nonzero(~group), group
+                        #print i_quantile, quantile, np.sum(training_weights[group]), 'JN',self.jackknife_score_relative_uncertainty(group), self.jackknife_score_relative_uncertainty(~group)
+                        max_jackknive_rel_uncertainty = max( map( np.nan_to_num, [self.jackknife_score_relative_uncertainty(group), self.jackknife_score_relative_uncertainty(~group)] ) )
+                        if not max_jackknive_rel_uncertainty<=self.max_relative_score_uncertainty:
+                            #print "Deleting i_quantile", i_quantile,  "quantile", quantile, "because max_jackknive_rel_uncertainty", max_jackknive_rel_uncertainty, np.count_nonzero(group), np.count_nonzero(~group), group, " len(quantiles) after deletion", len(quantiles)-1 
+                            quantiles = np.delete(quantiles, i_quantile)
+                            n_threshold-=1
+                    #print "After deletion:", n_threshold, len(quantiles), quantiles
+                    if n_threshold<0: break
+                digitized_features = np.digitize( features[args_sorted], quantiles )
+
+                #print
+                #print "len(arg_sorted)", len(args_sorted), "last round?", last_round, "i_feature", i_feature 
+                #print "features", features, "features[args_sorted]", features[args_sorted] 
+                #print "quantiles", quantiles, "q",q
+                #print "digitized_featues", digitized_features
+
+                weight_sums      = weight_sum_low      + np.cumsum( [ np.sum(training_weights[args_sorted][digitized_features==i]) for i in range( n_threshold +1) ] )
+                weight_diff_sums = weight_diff_sum_low + np.cumsum( [ np.sum(training_diff_weights[args_sorted][digitized_features==i]) for i in range( n_threshold  +1) ] )
+
+                #print "weight_sum", weight_sum
+                #print "weight_diff_sum", weight_diff_sum
+                #print "weight_sums", weight_sums
+                #print "weight_diff_sums", weight_diff_sums
+
+                fisher_information_left  = np.divide( weight_diff_sums*weight_diff_sums, weight_sums, out=np.zeros_like(weight_diff_sums), where=weight_sums!=0) 
+                weight_diff_sums_right   = weight_diff_sum-weight_diff_sums
+                weight_sums_right        = weight_sum-weight_sums
+                fisher_information_right = np.divide( weight_diff_sums_right*weight_diff_sums_right, weight_sums_right, out=np.zeros_like(weight_diff_sums_right), where=weight_sums_right!=0) 
+
+                #print "fisher_information_left",  fisher_information_left
+                #print "fisher_information_right", fisher_information_right
+
+                fisher_gains = fisher_information_left + fisher_information_right
+                argmax_fi    = np.argmax(np.nan_to_num(fisher_gains))
+                #print "fisher_gains", fisher_gains
+                #print "argmax_fi", argmax_fi, "split-value:", quantiles[argmax_fi-1]
+
+                remove_low  =  np.count_nonzero(digitized_features[digitized_features<argmax_fi])
+                remove_high =  np.count_nonzero(digitized_features[digitized_features>argmax_fi+1])
+
+                weight_sum_low      += np.sum(training_weights[args_sorted[:remove_low]])
+                weight_diff_sum_low += np.sum(training_diff_weights[args_sorted[:remove_low]])
+
+                if last_round: 
+                    #result  = quantiles[argmax_fi-1]
+                    if fisher_gains[argmax_fi] > self.split_gain: 
+                        self.split_i_feature = i_feature
+                        self.split_value     = quantiles[argmax_fi-1]  # The implementation produces X for "feature<X", we implement "feature<=X", i.e., must have the preceding entry
+                        self.split_gain      = fisher_gains[argmax_fi]
+                    break
+
+                counter += 1
+
+            #print "Number of iterations", counter
+            #print "Result (with '<=')", self.split_value
+
+        assert not np.isnan(self.split_value)
+        self.split_left_group = self.features[:,self.split_i_feature]<=self.split_value if not  np.isnan(self.split_value) else np.ones(len(self.features), dtype='bool')
+
     # Create child splits for a node or make terminal
-    def split(self, depth=0):
+    def split(self, _depth=0):
 
         # Find the best split
         #tic = time.time()
         if self.split_method == "python_loop":
-            self.get_split_fast()
+            self.get_split_python_loop()
         elif self.split_method == "vectorized_split_and_weight_sums":
             self.get_split_vectorized()
+        elif self.split_method == "iterative_split_and_weight_sums":
+            self.get_split_iterative()
         else:
             raise ValueError("no such split method %s" % self.split_method)
 
@@ -206,8 +355,8 @@ class Node:
         #print "left", self.jackknife_score_relative_uncertainty(self.split_left_group), "right", self.jackknife_score_relative_uncertainty(~self.split_left_group)
 
         # check for max depth or a 'no' split
-        if  self.max_depth <= depth+1 or (not any(self.split_left_group)) or all(self.split_left_group): # Jason Brownlee starts counting depth at 1, we start counting at 0, hence the +1
-            #print ("Choice2", depth, result_func(self.split_left_group), result_func(~self.split_left_group) )
+        if  self.max_depth <= _depth+1 or (not any(self.split_left_group)) or all(self.split_left_group): # Jason Brownlee starts counting depth at 1, we start counting at 0, hence the +1
+            #print ("Choice2", _depth, result_func(self.split_left_group), result_func(~self.split_left_group) )
             # The split was good, but we stop splitting further. Put everything in the left node! 
             self.split_value = float('inf')
             self.left        = ResultNode(**{val:func(np.ones(len(self.features),dtype=bool)) for val, func in result_funcs.iteritems()})
@@ -217,22 +366,22 @@ class Node:
             return
         # process left child
         if np.count_nonzero(self.split_left_group) < 2*self.min_size:
-            #print ("Choice3", depth, result_func(self.split_left_group) )
+            #print ("Choice3", _depth, result_func(self.split_left_group) )
             # Too few events in the left box. We stop.
             self.left             = ResultNode(**{val:func(self.split_left_group) for val, func in result_funcs.iteritems()})
         else:
-            #print ("Choice4", depth )
+            #print ("Choice4", _depth )
             # Continue splitting left box.
-            self.left             = Node(self.features[self.split_left_group], max_depth=self.max_depth, min_size=self.min_size, training_weights = self.training_weights[self.split_left_group], training_diff_weights = self.training_diff_weights[self.split_left_group], split_method=self.split_method, depth=self.depth+1 )
+            self.left             = Node(self.features[self.split_left_group], max_depth=self.max_depth, min_size=self.min_size, training_weights = self.training_weights[self.split_left_group], training_diff_weights = self.training_diff_weights[self.split_left_group], split_method=self.split_method, _depth=self._depth+1 )
         # process right child
         if np.count_nonzero(~self.split_left_group) < 2*self.min_size:
-            #print ("Choice5", depth, result_func(~self.split_left_group) )
+            #print ("Choice5", _depth, result_func(~self.split_left_group) )
             # Too few events in the right box. We stop.
             self.right            = ResultNode(**{val:func(~self.split_left_group) for val, func in result_funcs.iteritems()})
         else:
-            #print ("Choice6", depth  )
+            #print ("Choice6", _depth  )
             # Continue splitting right box. 
-            self.right            = Node(self.features[~self.split_left_group], max_depth=self.max_depth, min_size=self.min_size, training_weights = self.training_weights[~self.split_left_group], training_diff_weights = self.training_diff_weights[~self.split_left_group], split_method=self.split_method, depth=self.depth+1 )
+            self.right            = Node(self.features[~self.split_left_group], max_depth=self.max_depth, min_size=self.min_size, training_weights = self.training_weights[~self.split_left_group], training_diff_weights = self.training_diff_weights[~self.split_left_group], split_method=self.split_method, _depth=self._depth+1 )
 
     # Prediction    
     #@memoized -> The decorator doesn't work because numpy.ndarrays are not hashable. Hashes are for fast lookup. Maybe it's dangerous to circumvent this with hash(ndarray.tostring())? Niki?
@@ -286,10 +435,10 @@ class Node:
             self.right.prune()
 
     # Print a decision tree
-    def print_tree(self, key = 'FI', depth=0):
-        print('%s[X%d <= %.3f]' % ((self.depth*' ', self.split_i_feature, self.split_value)))
+    def print_tree(self, key = 'FI', _depth=0):
+        print('%s[X%d <= %.3f]' % ((self._depth*' ', self.split_i_feature, self.split_value)))
         for node in [self.left, self.right]:
-            node.print_tree(key = key, depth = depth+1)
+            node.print_tree(key = key, _depth = _depth+1)
 
     def total_FI(self):
         result = 0
@@ -307,8 +456,8 @@ class ResultNode:
     def __init__( self, **kwargs ):
         for key, val in kwargs.iteritems():
             setattr( self, key, val )
-    def print_tree(self, key = 'FI', depth=0):
-        print('%s[%s] (%d)' % (((depth)*' ', getattr( self, key), self.size)))
+    def print_tree(self, key = 'FI', _depth=0):
+        print('%s[%s] (%d)' % (((_depth)*' ', getattr( self, key), self.size)))
 
     def get_list( self, key='score'):
         ''' recursively obtain all thresholds (bottom of recursion)'''

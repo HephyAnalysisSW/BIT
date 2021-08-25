@@ -40,6 +40,7 @@ argParser.add_argument("--luminosity",         action="store",      default=137,
 argParser.add_argument("--lowPtThresh",        action="store",      default=50,            type=int,                                         help="low pt threshold")
 argParser.add_argument("--highPtThresh",       action="store",      default=200,           type=int,                                         help="high pt threshold")
 argParser.add_argument("--fraction_alpha",     action="store",      default=1,             type=float,                                       help="Move information to this fraction of the events (for overtraining study)")
+argParser.add_argument("--max_relative_score_uncertainty", action="store", default=0,      type=float,                                       help="Maximum allowed relative score uncertainty in each node")
 args = argParser.parse_args()
 
 # import the toy model
@@ -49,16 +50,21 @@ model = getattr( models, args.model )
 # Produce training data set
 training_features, training_weights, training_diff_weights = model.get_dataset( args.nTraining )
 
+def weight_up(fraction_alpha, diff_weights):
+    bool_arr = np.zeros(len(diff_weights), dtype=bool)
+    bool_arr[:int(round(fraction_alpha*len(diff_weights)))] = True
+    random.shuffle(bool_arr)
+    diff_weights[bool_arr]  = diff_weights[bool_arr]/args.fraction_alpha
+    diff_weights[~bool_arr] = 0.
+
 # Move the whole information into a fraction 'fraction_alpha' of events
 model_postfix = ''
 if args.fraction_alpha>0 and args.fraction_alpha<1:
-    bool_arr = np.zeros(len(training_features), dtype=bool)
-    bool_arr[:int(round(args.fraction_alpha*len(training_features)))] = True
-    random.shuffle(bool_arr)
-    training_diff_weights[bool_arr]  = training_diff_weights[bool_arr]/args.fraction_alpha
-    training_diff_weights[~bool_arr] = 0.
+    weight_up( args.fraction_alpha, training_diff_weights)
+    model_postfix += "_alpha%4.4f"%args.fraction_alpha
 
-    model_postfix = "_alpha%4.4f"%args.fraction_alpha
+if args.max_relative_score_uncertainty>0:
+   model_postfix += "_maxJN%4.4f"%args.max_relative_score_uncertainty
 
 # directory for plots
 plot_directory = os.path.join( user_plot_directory, args.plot_directory, model.id_string + model_postfix )
@@ -182,9 +188,10 @@ bit= BoostedInformationTree(
         n_trees               = n_trees,
         max_depth             = max_depth,
         min_size              = min_size,
-        split_method          = 'vectorized_split_and_weight_sums',
+        split_method          = 'vectorized_split_and_weight_sums' if args.max_relative_score_uncertainty==0 else 'iterative_split_and_weight_sums',
         weights_update_method = 'vectorized',
         calibrated            = False,
+        max_relative_score_uncertainty= args.max_relative_score_uncertainty
             )
 
 bit.boost()
@@ -196,9 +203,10 @@ time2 = time.time()
 boosting_time = time2 - time1
 print ("Boosting time: %.2f seconds" % boosting_time)
 
-
 # Testing
 test_features, test_weights, test_diff_weights = model.get_dataset( args.nTraining )
+if args.fraction_alpha>0 and args.fraction_alpha<1:
+    weight_up( args.fraction_alpha, test_diff_weights)
 
 training_profile     = ROOT.TProfile("trainP", "trainP",         8, model.xmin, model.xmax)
 test_profile         = ROOT.TProfile("testP",  "testP",          8, model.xmin, model.xmax)
