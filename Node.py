@@ -162,8 +162,19 @@ class Node:
             plateau_and_split_range_mask = plateau_and_split_range_mask.astype(int)
 
             #tic = time.time()
-            idx, gain = self.find_split_vectorized(weight_sums, weight_diff_sums, plateau_and_split_range_mask)
+            self.split_left_group = self.features[:,self.split_i_feature]<=self.split_value if not  np.isnan(self.split_value) else np.ones(len(self.features), dtype='bool')
+            total_weight_sum         = sorted_weight_sums[-1]
+            total_diff_weight_sum    = sorted_weight_diff_sums[-1]
+            sorted_weight_sums       = sorted_weight_sums[0:-1]
+            sorted_weight_diff_sums  = sorted_weight_diff_sums[0:-1]
+            fisher_information_left  = sorted_weight_diff_sums*sorted_weight_diff_sums/sorted_weight_sums 
+            fisher_information_right = (total_diff_weight_sum-sorted_weight_diff_sums)*(total_diff_weight_sum-sorted_weight_diff_sums)/(total_weight_sum-sorted_weight_sums) 
+            fisher_gains = fisher_information_left + fisher_information_right
+            #print fisher_gains, fisher_information_left, fisher_information_right
+            idx = np.argmax(np.nan_to_num(fisher_gains)*plateau_and_split_range_mask)
+            gain =  fisher_gains[argmax_fi]
             #toc = time.time()
+
             #print("vectorized split in {time:0.4f} seconds".format(time=toc-tic))
             value = feature_values[feature_sorted_indices[idx]]
 
@@ -176,20 +187,6 @@ class Node:
 
         #print self.split_i_feature, self.split_value, self.split_gain
 
-        self.split_left_group = self.features[:,self.split_i_feature]<=self.split_value if not  np.isnan(self.split_value) else np.ones(len(self.features), dtype='bool')
-
-    def find_split_vectorized(self, sorted_weight_sums, sorted_weight_diff_sums, plateau_and_split_range_mask):
-        total_weight_sum         = sorted_weight_sums[-1]
-        total_diff_weight_sum    = sorted_weight_diff_sums[-1]
-        sorted_weight_sums       = sorted_weight_sums[0:-1]
-        sorted_weight_diff_sums  = sorted_weight_diff_sums[0:-1]
-        fisher_information_left  = sorted_weight_diff_sums*sorted_weight_diff_sums/sorted_weight_sums 
-        fisher_information_right = (total_diff_weight_sum-sorted_weight_diff_sums)*(total_diff_weight_sum-sorted_weight_diff_sums)/(total_weight_sum-sorted_weight_sums) 
-
-        fisher_gains = fisher_information_left + fisher_information_right
-        #print fisher_gains, fisher_information_left, fisher_information_right
-        argmax_fi = np.argmax(np.nan_to_num(fisher_gains)*plateau_and_split_range_mask)
-        return argmax_fi, fisher_gains[argmax_fi]
 
     @staticmethod
     def quantile_thresholds(  n_threshold ):
