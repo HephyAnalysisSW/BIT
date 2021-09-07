@@ -7,42 +7,26 @@ import pickle
 
 import numpy as np
 
-import Node
-
-default_cfg = {
-    "n_trees" : 100, 
-    "learning_rate" : "auto", 
-    "weights_update_method" : "vectorized", 
-    "calibrated" : False,
-}
+from Node import Node
 
 class BoostedInformationTree:
 
-    def __init__( self, training_features, training_weights, training_diff_weights, **kwargs ):
+    def __init__( self, training_features, training_weights, training_diff_weights, n_trees = 100, learning_rate = "auto", weights_update_method = "python_loop", calibrated = False, **kwargs ):
 
-
-        # make cfg and node_cfg from the kwargs keys known by the Node
-        self.cfg = default_cfg
-        self.cfg.update( kwargs )
-        self.node_cfg = {}
-        for (key, val) in kwargs.iteritems():
-            if key in Node.default_cfg.keys():
-                self.node_cfg[key] = val 
-            elif key in default_cfg.keys():
-                self.cfg[key]      = val
-            else:
-                raise RuntimeError( "Got unexpected keyword arg: %s:%r" %( key, val ) )
-
-        for (key, val) in self.cfg.iteritems():
-                setattr( self, key, val )
-
+        self.n_trees        = n_trees
+        self.learning_rate  = learning_rate
+        self.calibrate      = calibrated 
         # Attempt to learn 98%. (1-learning_rate)^n_trees = 0.02 -> After the fit, the score is at least down to 2% 
-        if self.learning_rate == "auto":
+        if learning_rate == "auto":
             self.learning_rate = 1-0.02**(1./self.n_trees)
+        self.kwargs         = kwargs
 
         self.training_weights       = training_weights
         self.training_diff_weights  = np.copy(training_diff_weights) # Protect the outside from reweighting.
         self.training_features      = training_features
+
+        # how to update the weights in the boosting/learning process
+        self.weights_update_method = weights_update_method
 
         # Will hold the trees
         self.trees                  = []
@@ -85,10 +69,10 @@ class BoostedInformationTree:
 
             # fit to data
             time1 = time.time()
-            root = Node.Node(    self.training_features, 
+            root = Node(    self.training_features, 
                             training_weights        =   self.training_weights, 
                             training_diff_weights   =   self.training_diff_weights,
-                            **self.node_cfg 
+                            **self.kwargs 
                         )
             time2 = time.time()
             weak_learner_time += time2 - time1
@@ -131,7 +115,7 @@ class BoostedInformationTree:
        
         self.calibration_min_fac = (0., 1.)
         time1 = time.time()
-        if self.calibrated:
+        if self.calibrate:
             predictions = self.vectorized_predict(self.training_features)
             min_        = np.min(predictions)
             self.calibration_min_fac = ( min_, 1./(np.max(predictions)-min_) )

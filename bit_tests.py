@@ -35,12 +35,12 @@ argParser = argparse.ArgumentParser(description = "Argument parser")
 argParser.add_argument("--plot_directory",     action="store",      default="BIT_v1",                                                        help="plot sub-directory")
 argParser.add_argument("--model",              action="store",      default="exponential", type=str,   choices=allModels,                    help="import model")
 argParser.add_argument("--theta",              action="store",      default=0.001,         type=float,                                       help="theta value for model")
-argParser.add_argument("--nTraining",          action="store",      default=100000,        type=int,                                         help="number of training events")
+argParser.add_argument("--nTraining",          action="store",      default=10000,       type=int,                                         help="number of training events")
 argParser.add_argument("--luminosity",         action="store",      default=137,           type=int,                                         help="luminosity value, currently only for plot label")
 argParser.add_argument("--lowPtThresh",        action="store",      default=50,            type=int,                                         help="low pt threshold")
 argParser.add_argument("--highPtThresh",       action="store",      default=200,           type=int,                                         help="high pt threshold")
 argParser.add_argument("--fraction_alpha",     action="store",      default=1,             type=float,                                       help="Move information to this fraction of the events (for overtraining study)")
-argParser.add_argument("--max_relative_score_uncertainty", action="store", default=0,      type=float,                                       help="Maximum allowed relative score uncertainty in each node")
+argParser.add_argument("--max_uncertainty",    action="store",      default=0,             type=float,                                       help="Maximum allowed relative uncertainty in each node split")
 args = argParser.parse_args()
 
 # import the toy model
@@ -63,8 +63,8 @@ if args.fraction_alpha>0 and args.fraction_alpha<1:
     weight_up( args.fraction_alpha, training_diff_weights)
     model_postfix += "_alpha%4.4f"%args.fraction_alpha
 
-if args.max_relative_score_uncertainty>0:
-   model_postfix += "_maxJN%4.4f"%args.max_relative_score_uncertainty
+if args.max_uncertainty>0:
+   model_postfix += "_maxJN%4.4f"%args.max_uncertainty
 
 # directory for plots
 plot_directory = os.path.join( user_plot_directory, args.plot_directory, model.id_string + model_postfix )
@@ -188,13 +188,22 @@ bit= BoostedInformationTree(
         n_trees               = n_trees,
         max_depth             = max_depth,
         min_size              = min_size,
-        split_method          = 'vectorized_split_and_weight_sums' if args.max_relative_score_uncertainty==0 else 'iterative_split_and_weight_sums',
+        split_method          = 'vectorized_split_and_weight_sums',
         weights_update_method = 'vectorized',
         calibrated            = False,
-        max_relative_score_uncertainty= args.max_relative_score_uncertainty
+        max_uncertainty       = args.max_uncertainty,
             )
 
-bit.boost()
+bit.boost(debug = True)
+
+from debug import make_debug_plots
+
+# Testing
+test_features, test_weights, test_diff_weights = model.get_dataset( args.nTraining )
+if args.fraction_alpha>0 and args.fraction_alpha<1:
+    weight_up( args.fraction_alpha, test_diff_weights)
+
+make_debug_plots( bit, test_features, test_weights, test_diff_weights, plot_directory)
 
 #bit.save('tmp.pkl')
 #bit = BoostedInformationTree.load('tmp.pkl')
@@ -202,11 +211,6 @@ bit.boost()
 time2 = time.time()
 boosting_time = time2 - time1
 print ("Boosting time: %.2f seconds" % boosting_time)
-
-# Testing
-test_features, test_weights, test_diff_weights = model.get_dataset( args.nTraining )
-if args.fraction_alpha>0 and args.fraction_alpha<1:
-    weight_up( args.fraction_alpha, test_diff_weights)
 
 training_profile     = ROOT.TProfile("trainP", "trainP",         8, model.xmin, model.xmax)
 test_profile         = ROOT.TProfile("testP",  "testP",          8, model.xmin, model.xmax)

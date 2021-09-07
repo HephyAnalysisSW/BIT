@@ -28,7 +28,7 @@ def make_debug_plots( bit, test_features, test_weights, test_diff_weights, plot_
 
         h_der_test = ROOT.TH1D("h_derivative_test_%i"%n_tree, "feature %i"%split_i_feature, 50, min(features), max(features))
         h_der_test.style = styles.lineStyle(ROOT.kBlue)
-        for feature, weight, derivative in zip(test_features, test_weights, test_diff_weights):
+        for feature, weight, derivative in zip(test_features[:,split_i_feature], test_weights, test_diff_weights):
             h_der_test.Fill( feature, derivative )
 
         # recall the starting point:
