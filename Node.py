@@ -9,6 +9,7 @@ default_cfg = {
     "min_size" : 50,
     "max_uncertainty": -1,
     "split_method":"vectorized_split_and_weight_sums",
+    "max_n_split": -1,
 }
 
 class Node:
@@ -147,9 +148,20 @@ class Node:
             feature_sorted_indices = np.argsort(feature_values)
             sorted_weight_sums     = np.cumsum(self.training_weights[feature_sorted_indices])
             sorted_diff_weight_sums= np.cumsum(self.training_diff_weights[feature_sorted_indices])
-
+            
             # respect min size for split
-            plateau_and_split_range_mask = np.ones(self.size-1, dtype=np.dtype('bool'))
+            if self.max_n_split<2:
+                plateau_and_split_range_mask = np.ones(self.size-1, dtype=np.dtype('bool'))
+            else:
+                min_, max_ = min(feature_values), max(feature_values) 
+                #print "_depth",self._depth, "len(feature_values)",len(feature_values), "min_, max_", min_, max_
+                plateau_and_split_range_mask  = np.digitize(feature_values[feature_sorted_indices], np.arange (min_, max_, (max_-min_)/(self.max_n_split+1)))
+                #print len(plateau_and_split_range_mask), plateau_and_split_range_mask
+                plateau_and_split_range_mask = plateau_and_split_range_mask[1:]-plateau_and_split_range_mask[:-1]
+                plateau_and_split_range_mask = np.insert( plateau_and_split_range_mask, 0, 0).astype('bool')[:-1]
+                #print "plateau_and_split_range_mask", plateau_and_split_range_mask
+                #print "CUTS", feature_values[feature_sorted_indices][:-1][plateau_and_split_range_mask] 
+
             if self.min_size > 1:
                 plateau_and_split_range_mask[0:self.min_size-1] = False
                 plateau_and_split_range_mask[-self.min_size+1:] = False

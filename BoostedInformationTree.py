@@ -14,6 +14,7 @@ default_cfg = {
     "learning_rate" : "auto", 
     "weights_update_method" : "vectorized", 
     "calibrated" : False,
+    "bagging_fraction": 1.,
 }
 
 class BoostedInformationTree:
@@ -83,11 +84,17 @@ class BoostedInformationTree:
 
         for n_tree in range(self.n_trees):
 
+            # bagging mask
+            if self.bagging_fraction<1:
+                bagging_mask = np.random.choice(a=[True, False], size=len(self.training_features), p=[self.bagging_fraction, 1-self.bagging_fraction])
+            else:
+                bagging_mask = np.ones(len(self.training_features)).astype('bool')
             # fit to data
             time1 = time.time()
-            root = Node.Node(    self.training_features, 
-                            training_weights        =   self.training_weights, 
-                            training_diff_weights   =   self.training_diff_weights,
+            root = Node.Node(   self.training_features[bagging_mask], 
+                                training_weights        =   self.training_weights[bagging_mask], 
+                                training_diff_weights   =   self.training_diff_weights[bagging_mask],
+
                             **self.node_cfg 
                         )
             time2 = time.time()
@@ -101,9 +108,10 @@ class BoostedInformationTree:
                 self.debug_data.append( {
                     'split_i_feature': root.split_i_feature,
                     'split_value':     root.split_value,
-                    'features':      np.copy(self.training_features[:, root.split_i_feature]),
-                    'weights' :      np.copy(self.training_weights),
-                    'diff_weights' : np.copy(self.training_diff_weights),
+                    'mask':            np.copy(bagging_mask),
+                    #'features':      np.copy(self.training_features[bagging_mask][:, root.split_i_feature]),
+                    'weights' :        np.copy(self.training_weights[bagging_mask]),
+                    'diff_weights' :   np.copy(self.training_diff_weights[bagging_mask]),
                     })
  
             # reduce the score

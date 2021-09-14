@@ -41,6 +41,8 @@ argParser.add_argument("--lowPtThresh",        action="store",      default=50, 
 argParser.add_argument("--highPtThresh",       action="store",      default=200,           type=int,                                         help="high pt threshold")
 argParser.add_argument("--fraction_alpha",     action="store",      default=1,             type=float,                                       help="Move information to this fraction of the events (for overtraining study)")
 argParser.add_argument("--max_uncertainty",    action="store",      default=0,             type=float,                                       help="Maximum allowed relative uncertainty in each node split")
+argParser.add_argument("--bagging_fraction",   action="store",      default=1.,            type=float,                                       help="Bagging fraction")
+argParser.add_argument("--max_n_split",        action="store",      default=-1,            type=int,                                         help="Maximum number of splits in node split")
 args = argParser.parse_args()
 
 # import the toy model
@@ -65,6 +67,12 @@ if args.fraction_alpha>0 and args.fraction_alpha<1:
 
 if args.max_uncertainty>0:
    model_postfix += "_maxJN%4.4f"%args.max_uncertainty
+
+if args.bagging_fraction<1.0:
+   model_postfix += "_BF%2.2f"%args.bagging_fraction
+
+if args.max_n_split>1:
+   model_postfix += "_MNS%i"%args.max_n_split
 
 # directory for plots
 plot_directory = os.path.join( user_plot_directory, args.plot_directory, model.id_string + model_postfix )
@@ -192,6 +200,8 @@ bit= BoostedInformationTree(
         weights_update_method = 'vectorized',
         calibrated            = False,
         max_uncertainty       = args.max_uncertainty,
+        bagging_fraction      = args.bagging_fraction,
+        max_n_split           = args.max_n_split,
             )
 
 bit.boost(debug = True)
@@ -203,7 +213,7 @@ test_features, test_weights, test_diff_weights = model.get_dataset( args.nTraini
 if args.fraction_alpha>0 and args.fraction_alpha<1:
     weight_up( args.fraction_alpha, test_diff_weights)
 
-make_debug_plots( bit, test_features, test_weights, test_diff_weights, plot_directory)
+make_debug_plots( bit, training_features, training_weights, training_diff_weights, test_features, test_weights, test_diff_weights, plot_directory)
 
 #bit.save('tmp.pkl')
 #bit = BoostedInformationTree.load('tmp.pkl')
