@@ -121,32 +121,32 @@ bsm_colors = [ROOT.kBlack, ROOT.kBlue, ROOT.kGreen, ROOT.kMagenta, ROOT.kCyan]
 
 # Let's plot the model so that Niki sees the hypothesis.
 Nbins = 80
-h_BSM = {theta:ROOT.TH1F("h_BSM", "h_BSM", Nbins, xmin, xmax) for theta in plot_theta_values}
-h_theory = {theta:ROOT.TH1F("h_theory", "h_theory", Nbins, xmin, xmax) for theta in plot_theta_values}
+h_BSM    = {plot_theta:ROOT.TH1F("h_BSM", "h_BSM", Nbins, xmin, xmax)       for plot_theta in plot_theta_values}
+h_theory = {plot_theta:ROOT.TH1F("h_theory", "h_theory", Nbins, xmin, xmax) for plot_theta in plot_theta_values}
 
-for i_theta, theta in enumerate(plot_theta_values):
-    weights_BSM = mixturePDF.getWeights( training_features, theta = theta, theta_ref = theta_ref, only_weights = True) 
+for i_plot_theta, plot_theta in enumerate(plot_theta_values):
+    weights_BSM = mixturePDF.getWeights( training_features, theta = plot_theta, theta_ref = theta_ref, only_weights = True) 
     for i in range(args.nTraining):
-        h_BSM[theta].Fill( training_features[i], weights_BSM[i] )
+        h_BSM[plot_theta].Fill( training_features[i], weights_BSM[i] )
 
-    h_BSM[theta].style = styles.lineStyle( bsm_colors[i_theta], width=2, dashed=False )
-    h_BSM[theta].Scale(Nbins/(xmax-xmin)/h_BSM[theta].Integral())
-    #h_BSM[theta].Scale(1./args.nTraining)
-    #h_BSM[theta].Scale(1./mixturePDF.sigma(theta))
-    h_BSM[theta].legendText = "sampled #theta=%s"%str(theta)
+    h_BSM[plot_theta].style = styles.lineStyle( bsm_colors[i_plot_theta], width=2, dashed=False )
+    h_BSM[plot_theta].Scale(Nbins/(xmax-xmin)/h_BSM[plot_theta].Integral())
+    #h_BSM[plot_theta].Scale(1./args.nTraining)
+    #h_BSM[plot_theta].Scale(1./mixturePDF.sigma(plot_theta))
+    h_BSM[plot_theta].legendText = "sampled #plot_theta=%s"%str(plot_theta)
     
-    for i_bin in range(1,h_theory[theta].GetNbinsX()+1):
-        h_theory[theta].SetBinContent( i_bin, mixturePDF.eval( theta, [h_theory[theta].GetBinLowEdge(i_bin)] ))
-        h_theory[theta].style = styles.lineStyle( bsm_colors[i_theta], width=2, dashed=True )
-        #h_theory[theta].Scale(1./h_theory[theta].Integral())
-        h_theory[theta].legendText = "p(x|#theta=%s)"%str(theta)
+    for i_bin in range(1,h_theory[plot_theta].GetNbinsX()+1):
+        h_theory[plot_theta].SetBinContent( i_bin, mixturePDF.eval( plot_theta, [h_theory[plot_theta].GetBinLowEdge(i_bin)] ))
+        h_theory[plot_theta].style = styles.lineStyle( bsm_colors[i_plot_theta], width=2, dashed=True )
+        #h_theory[plot_theta].Scale(1./h_theory[plot_theta].Integral())
+        h_theory[plot_theta].legendText = "p(x|#plot_theta=%s)"%str(plot_theta)
 
 
 # Plot of model and theory 
 histos = []
-for theta in plot_theta_values:
-    histos.append([h_theory[theta]])
-    histos.append([h_BSM[theta]])
+for plot_theta in plot_theta_values:
+    histos.append([h_theory[plot_theta]])
+    histos.append([h_BSM[plot_theta]])
 
 plot   = Plot.fromHisto( "model",  histos, texX="x", texY="a.u." )
 
@@ -257,7 +257,6 @@ for derivative in training_weights.keys():
 
         # plot loss
         test_scores     = bits[derivative].vectorized_predict(test_features)
-        training_scores = bits[derivative].vectorized_predict(test_features)
         max_score = max(test_scores)
         min_score = min(test_scores)
 
@@ -309,6 +308,8 @@ for derivative in training_weights.keys():
 
         plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, plotLog=False, titleOffset=0.08, histModifications=histModifications )
 
+
+
 histos_weights = [] 
 histos_scores  = [] 
 Nbins             = 8
@@ -340,9 +341,9 @@ for i_bin in range(Nbins):
 
         event_weights = test_weights[derivative][mask]
         event_scores = bits[derivative].vectorized_predict(events)
-        print         
-        print event_weights
-        print event_scores
+        #print         
+        #print event_weights
+        #print event_scores
         
         histos_weights[i_derivative].SetBinContent( i_bin+1, event_weights.sum()/len(event_weights) )
         histos_scores [i_derivative].SetBinContent( i_bin+1, event_scores.sum()/len(event_scores) )
@@ -365,50 +366,82 @@ yRange                 = "auto" #( minY, maxY )
 
 plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, plotLog=False, titleOffset=0.08, histModifications=histModifications )
 
-################################
-### Plot likelihood comparison #
-################################
-#
-#bsm_colors = [ROOT.kBlack, ROOT.kBlue, ROOT.kGreen, ROOT.kMagenta, ROOT.kCyan]
+########################################
+## Plot unbinned likelihood comparison #
+########################################
+
+bsm_colors = [ROOT.kBlack, ROOT.kBlue, ROOT.kGreen, ROOT.kMagenta, ROOT.kCyan]
 #test_features = mixturePDF.getEvents( args.nTraining, theta_ref = theta_ref)
 #test_weights  = mixturePDF.getWeights( test_features, theta = theta, theta_ref = theta_ref)
+
+#Nbins = 20
+#l_reco    = {plot_theta:ROOT.TH1F("l_reco", "l_reco", Nbins, xmin, xmax) for plot_theta in plot_theta_values}
+#l_reco_lin= {plot_theta:ROOT.TH1F("l_reco_lin", "l_reco_lin", Nbins, xmin, xmax) for plot_theta in plot_theta_values}
+#l_theory  = {plot_theta:ROOT.TH1F("l_theory", "l_theory", Nbins, xmin, xmax) for plot_theta in plot_theta_values}
+
+bit_predictions  = { key:bits[key].vectorized_predict(test_features) for key in  training_weights.keys() if key!=tuple() }
+
+def compute_weights(weights, theta, theta_ref):
+   return weights[()] \
+    + np.array( [ (theta[i]-theta_ref[i])*weights[(i,)] for i in range(len(theta)) ] ).sum(axis=0)\
+    + np.array( [ 0.5*(theta[i]-theta_ref[i])*(theta[j]-theta_ref[j])*weights[(i,j)] for i in range(len(theta)) for j in range(len(theta)) ] ).sum(axis=0)
+
+def predict_weight_ratio(bit_predictions, theta, theta_ref):
+   return 1.+ \
+    + np.array( [ (theta[i]-theta_ref[i])*bit_predictions[(i,)] for i in range(len(theta)) ] ).sum(axis=0)\
+    + np.array( [ 0.5*(theta[i]-theta_ref[i])*(theta[j]-theta_ref[j])*bit_predictions[(i,j)] for i in range(len(theta)) for j in range(len(theta)) ] ).sum(axis=0)
+
+for i_plot_theta, plot_theta in enumerate(np.arange(-1,1,.05).reshape(-1,1)):
+    w1 = compute_weights( test_weights, plot_theta, theta_ref ) 
+    w0 = compute_weights( test_weights, theta_ref , theta_ref ) 
+
+    ext_Delta_NLL      = w1 - w0 - w0*np.log(w1/w0)
+    ext_Delta_NLL_pred = w1 - w0 - w0*np.log(predict_weight_ratio(bit_predictions, plot_theta, theta_ref))
+    print plot_theta, "true", ext_Delta_NLL.sum(), "pred", ext_Delta_NLL_pred.sum()
+
+ 
+#for i in range(min(args.nTraining,50000)):
+#    if i%1000==0:
+#        print "At",i
 #
-#Nbins = 80
-#l_reco    = {theta:ROOT.TH1F("l_reco", "l_reco", Nbins, xmin, xmax) for theta in plot_theta_values}
-#l_theory  = {theta:ROOT.TH1F("l_theory", "l_theory", Nbins, xmin, xmax) for theta in plot_theta_values}
+#    for i_plot_theta, plot_theta in enumerate(plot_theta_values):
+#        if list(plot_theta)==list(theta_ref):
+#            continue
+#        lr_theory = mixturePDF.eval(plot_theta, test_features[i]) / mixturePDF.eval(theta_ref, test_features[i])
+#        # extended likelihood
+#        lr_theory*= (mixturePDF.sigma(plot_theta)/mixturePDF.sigma(theta_ref))
+#        lr_reco_lin   = 1 + (plot_theta[0]-theta_ref[0])*bit_predictions[(0,)][i]
+#        lr_reco       = lr_reco_lin +  0.5*(plot_theta[0]-theta_ref[0])**2*bit_predictions[(0,0)][i]
 #
-#for i_theta, theta in enumerate(plot_theta_values):
-#    for i in range(args.nTraining)[:100]:
-#        lr_theory = mixturePDF.eval(theta, test_features[i]) / mixturePDF.eval(theta_ref, test_features[i])
-##        l_theory[theta].Fill( test_features[i], lr_theory )
-##        lr_reco   = 1 + (theta[0]-theta_ref[0])*bits[(0,)].predict(test_features[i]) + 0.5*(theta[0]-theta_ref[0])**2*bits[(0,0)].predict(test_features[i])
-##        l_reco[theta].Fill( test_features[i], lr_reco )
+#        if lr_reco>0:
+#            l_reco[plot_theta].Fill( test_features[i], log(lr_reco) )
+#        if lr_reco_lin>0:
+#            l_reco_lin[plot_theta].Fill( test_features[i], log(lr_reco_lin) )
+#        if lr_theory>0:
+#            l_theory[plot_theta].Fill( test_features[i], log(lr_theory) )
+#        #print "plot_theta", plot_theta, "theta_ref",theta_ref, "features", test_features[i], "lr_theory", lr_theory, "lr_reco", lr_reco
 #
-#        #print "theta", theta, "theta_ref",theta_ref, "features", test_features[i], "lr_theory", lr_theory, "lr_reco", lr_reco
-#        print "theta", theta, "theta_ref",theta_ref, "features", test_features[i], "bits0 / 00",bits[(0,)].predict(test_features[i]), bits[(0,0)].predict(test_features[i]), "w",test_weights[()][i], test_weights[(0,)][i],test_weights[(0,0)][i]
-#         assert False, "fix bug"
-##    l_theory[theta].style = styles.lineStyle( bsm_colors[i_theta], width=2, dashed=False )
-##    #l_theory[theta].Scale(Nbins/(xmax-xmin)/l_BSM[theta].Integral())
-##    #l_theory[theta].Scale(1./args.nTraining)
-##    #l_theory[theta].Scale(1./mixturePDF.sigma(theta))
-##    l_theory[theta].legendText = "sampled #theta=%s"%str(theta)
-##    
-##    for i_bin in range(1,l_theory[theta].GetNbinsX()+1):
-##        l_theory[theta].SetBinContent( i_bin, mixturePDF.eval( theta, [l_theory[theta].GetBinLowEdge(i_bin)] ))
-##        l_theory[theta].style = styles.lineStyle( bsm_colors[i_theta], width=2, dashed=True )
-##        #l_theory[theta].Scale(1./l_theory[theta].Integral())
-##        l_theory[theta].legendText = "p(x|#theta=%s)"%str(theta)
-#
+#        #print "theta", theta, "theta_ref",theta_ref, "features", test_features[i], "bits0 / 00",bits[(0,)].predict(test_features[i]), bits[(0,0)].predict(test_features[i]), "w",test_weights[()][i], test_weights[(0,)][i],test_weights[(0,0)][i]
+#        if i==0:
+#            l_theory[plot_theta].style = styles.lineStyle( bsm_colors[i_plot_theta], width=2, dashed=True )
+#            l_reco[plot_theta].style = styles.lineStyle( bsm_colors[i_plot_theta], width=2, dashed=False )
+#            l_reco_lin[plot_theta].style = styles.lineStyle( bsm_colors[i_plot_theta], width=1, dashed=False )
+#            #l_reco_lin[plot_theta].style = styles.lineStyle( bsm_colors[i_plot_theta], width=2, dashed=False )
+#            l_theory[plot_theta].legendText = "theory #theta=%s"%str(plot_theta)
+#            l_reco[plot_theta].legendText = "BIT LL #theta=%s"%str(plot_theta)
+#            l_reco_lin[plot_theta].legendText = "BIT LL (lin) #theta=%s"%str(plot_theta)
 #
 ## Plot of model and theory 
 #histos = []
-#for theta in plot_theta_values:
-#    histos.append([l_theory[theta]])
-#    histos.append([l_reco[theta]])
+#for plot_theta in plot_theta_values:
+#    if list(plot_theta)==list(theta_ref):
+#        continue
+#    histos.append([l_theory[plot_theta]])
+#    histos.append([l_reco[plot_theta]])
+#    histos.append([l_reco_lin[plot_theta]])
 #
-#plot   = Plot.fromHisto( "model",  histos, texX="x", texY="a.u." )
+#plot   = Plot.fromHisto( "likelihood",  histos, texX="x", texY="a.u." )
 #
-## Plot Style
 #histModifications      = [] #lambda h: h.GetYaxis().SetTitleOffset(2.2) ]
 #histModifications += [ lambda h: h.GetXaxis().SetTitleSize(26) ]
 #histModifications += [ lambda h: h.GetYaxis().SetTitleSize(26) ]
@@ -417,8 +450,6 @@ plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, plo
 #
 #ratioHistModifications = [] #lambda h: h.GetYaxis().SetTitleOffset(2.2) ]
 #ratio                  = None #{'yRange':(0.51,1.49), 'texY':"BSM/SM", "histModifications":ratioHistModifications}
-#legend                 = [(0.2,0.74,0.8,0.88),2]
-#yRange                 = (0.00003, "auto")
-##    yRange                 = (0, "auto")
-#
+#legend                 = [(0.2,0.74,0.8,0.88),3]
+#yRange                 = "auto"
 #plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, histModifications=histModifications )
