@@ -219,7 +219,6 @@ n_trees       = 50
 max_depth     = 2
 learning_rate = 0.20
 min_size      = 50
-n_plot        = 10
 
 test_features = mixturePDF.getEvents( args.nTraining, theta_ref = theta_ref)
 test_weights  = mixturePDF.getWeights( test_features, theta = theta, theta_ref = theta_ref)
@@ -307,8 +306,6 @@ for derivative in training_weights.keys():
         yRange                 = "auto" #( minY, maxY )
 
         plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, plotLog=False, titleOffset=0.08, histModifications=histModifications )
-
-
 
 histos_weights = [] 
 histos_scores  = [] 
