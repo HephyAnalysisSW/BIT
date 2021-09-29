@@ -384,69 +384,46 @@ def compute_weights(weights, theta, theta_ref):
     + np.array( [ 0.5*(theta[i]-theta_ref[i])*(theta[j]-theta_ref[j])*weights[(i,j)] for i in range(len(theta)) for j in range(len(theta)) ] ).sum(axis=0)
 
 def predict_weight_ratio(bit_predictions, theta, theta_ref):
-   return 1.+ \
-    + np.array( [ (theta[i]-theta_ref[i])*bit_predictions[(i,)] for i in range(len(theta)) ] ).sum(axis=0)\
-    + np.array( [ 0.5*(theta[i]-theta_ref[i])*(theta[j]-theta_ref[j])*bit_predictions[(i,j)] for i in range(len(theta)) for j in range(len(theta)) ] ).sum(axis=0)
+    lin       = np.array( [ (theta[i]-theta_ref[i])*bit_predictions[(i,)] for i in range(len(theta)) ] ).sum(axis=0)
+    quadratic = np.array( [ 0.5*(theta[i]-theta_ref[i])*(theta[j]-theta_ref[j])*bit_predictions[(i,j)] for i in range(len(theta)) for j in range(len(theta)) ] ).sum(axis=0)
+    return 1.+lin, 1.+lin+quadratic
 
-for i_plot_theta, plot_theta in enumerate(np.arange(-1,1,.05).reshape(-1,1)):
+h_truth = ROOT.TH1F("h_truth", "h_truth", 40, -.2, .2)
+h_pred  = ROOT.TH1F("h_pred", "h_pred",   40, -.2, .2)
+h_pred_lin  = ROOT.TH1F("h_pred_lin", "h_pred_lin",   40, -.2, .2)
+h_truth.style = styles.lineStyle( ROOT.kBlack, width=2, dashed=False ) 
+h_pred .style = styles.lineStyle( ROOT.kBlue, width=2, dashed=True ) 
+h_pred_lin .style = styles.lineStyle( ROOT.kGreen, width=2, dashed=True ) 
+h_truth.legendText = "ext. log(L(x|#theta)/L(x|0))"
+h_pred.legendText  = "pred. log-likelihood ratio" 
+h_pred.legendText  = "predicted (quadratic)" 
+h_pred_lin.legendText  = "predicted (linear)" 
+
+for i_plot_theta, plot_theta in enumerate(np.arange(-.2,.2,.01).reshape(-1,1)):
     w1 = compute_weights( test_weights, plot_theta, theta_ref ) 
     w0 = compute_weights( test_weights, theta_ref , theta_ref ) 
 
     ext_Delta_NLL      = w1 - w0 - w0*np.log(w1/w0)
-    ext_Delta_NLL_pred = w1 - w0 - w0*np.log(predict_weight_ratio(bit_predictions, plot_theta, theta_ref))
-    print plot_theta, "true", ext_Delta_NLL.sum(), "pred", ext_Delta_NLL_pred.sum()
+    lin, quad = np.log(predict_weight_ratio(bit_predictions, plot_theta, theta_ref))
+    ext_Delta_NLL_pred     = w1 - w0 - w0*quad
+    ext_Delta_NLL_pred_lin = w1 - w0 - w0*lin
 
- 
-#for i in range(min(args.nTraining,50000)):
-#    if i%1000==0:
-#        print "At",i
-#
-#    for i_plot_theta, plot_theta in enumerate(plot_theta_values):
-#        if list(plot_theta)==list(theta_ref):
-#            continue
-#        lr_theory = mixturePDF.eval(plot_theta, test_features[i]) / mixturePDF.eval(theta_ref, test_features[i])
-#        # extended likelihood
-#        lr_theory*= (mixturePDF.sigma(plot_theta)/mixturePDF.sigma(theta_ref))
-#        lr_reco_lin   = 1 + (plot_theta[0]-theta_ref[0])*bit_predictions[(0,)][i]
-#        lr_reco       = lr_reco_lin +  0.5*(plot_theta[0]-theta_ref[0])**2*bit_predictions[(0,0)][i]
-#
-#        if lr_reco>0:
-#            l_reco[plot_theta].Fill( test_features[i], log(lr_reco) )
-#        if lr_reco_lin>0:
-#            l_reco_lin[plot_theta].Fill( test_features[i], log(lr_reco_lin) )
-#        if lr_theory>0:
-#            l_theory[plot_theta].Fill( test_features[i], log(lr_theory) )
-#        #print "plot_theta", plot_theta, "theta_ref",theta_ref, "features", test_features[i], "lr_theory", lr_theory, "lr_reco", lr_reco
-#
-#        #print "theta", theta, "theta_ref",theta_ref, "features", test_features[i], "bits0 / 00",bits[(0,)].predict(test_features[i]), bits[(0,0)].predict(test_features[i]), "w",test_weights[()][i], test_weights[(0,)][i],test_weights[(0,0)][i]
-#        if i==0:
-#            l_theory[plot_theta].style = styles.lineStyle( bsm_colors[i_plot_theta], width=2, dashed=True )
-#            l_reco[plot_theta].style = styles.lineStyle( bsm_colors[i_plot_theta], width=2, dashed=False )
-#            l_reco_lin[plot_theta].style = styles.lineStyle( bsm_colors[i_plot_theta], width=1, dashed=False )
-#            #l_reco_lin[plot_theta].style = styles.lineStyle( bsm_colors[i_plot_theta], width=2, dashed=False )
-#            l_theory[plot_theta].legendText = "theory #theta=%s"%str(plot_theta)
-#            l_reco[plot_theta].legendText = "BIT LL #theta=%s"%str(plot_theta)
-#            l_reco_lin[plot_theta].legendText = "BIT LL (lin) #theta=%s"%str(plot_theta)
-#
-## Plot of model and theory 
-#histos = []
-#for plot_theta in plot_theta_values:
-#    if list(plot_theta)==list(theta_ref):
-#        continue
-#    histos.append([l_theory[plot_theta]])
-#    histos.append([l_reco[plot_theta]])
-#    histos.append([l_reco_lin[plot_theta]])
-#
-#plot   = Plot.fromHisto( "likelihood",  histos, texX="x", texY="a.u." )
-#
-#histModifications      = [] #lambda h: h.GetYaxis().SetTitleOffset(2.2) ]
-#histModifications += [ lambda h: h.GetXaxis().SetTitleSize(26) ]
-#histModifications += [ lambda h: h.GetYaxis().SetTitleSize(26) ]
-#histModifications += [ lambda h: h.GetXaxis().SetLabelSize(22)  ]
-#histModifications += [ lambda h: h.GetYaxis().SetLabelSize(22)  ]
-#
-#ratioHistModifications = [] #lambda h: h.GetYaxis().SetTitleOffset(2.2) ]
-#ratio                  = None #{'yRange':(0.51,1.49), 'texY':"BSM/SM", "histModifications":ratioHistModifications}
-#legend                 = [(0.2,0.74,0.8,0.88),3]
-#yRange                 = "auto"
-#plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, histModifications=histModifications )
+    i_bin = h_truth.FindBin(plot_theta)
+    h_truth.SetBinContent( i_bin, ext_Delta_NLL.sum() )
+    h_pred.SetBinContent( i_bin, ext_Delta_NLL_pred.sum() )
+    h_pred_lin.SetBinContent( i_bin, ext_Delta_NLL_pred_lin.sum() )
+    print plot_theta, "true", ext_Delta_NLL.sum(), "pred", ext_Delta_NLL_pred.sum(), "lin", ext_Delta_NLL_pred_lin.sum()
+
+plot   = Plot.fromHisto( "likelihood",  [[h_truth], [h_pred], [h_pred_lin]], texX="#theta", texY="LLR" )
+
+histModifications      = [] #lambda h: h.GetYaxis().SetTitleOffset(2.2) ]
+histModifications += [ lambda h: h.GetXaxis().SetTitleSize(26) ]
+histModifications += [ lambda h: h.GetYaxis().SetTitleSize(26) ]
+histModifications += [ lambda h: h.GetXaxis().SetLabelSize(22)  ]
+histModifications += [ lambda h: h.GetYaxis().SetLabelSize(22)  ]
+
+ratioHistModifications = [] #lambda h: h.GetYaxis().SetTitleOffset(2.2) ]
+ratio                  = None #{'yRange':(0.51,1.49), 'texY':"BSM/SM", "histModifications":ratioHistModifications}
+legend                 = [(0.2,0.74,0.8,0.88),1]
+yRange                 = "auto"
+plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, histModifications=histModifications ) 

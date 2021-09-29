@@ -183,9 +183,9 @@ time1 = time.time()
 
 # BIT config
 n_trees       = 50
-max_depth     = 2
+max_depth     = 3
 learning_rate = 0.20
-min_size      = 100
+min_size      = 50
 n_plot        = 5
 
 bit= BoostedInformationTree(
@@ -480,7 +480,8 @@ ratio                  = None
 legend                 = (0.2,0.64,0.6,0.88)
 minY                   =  1
 maxY                   = (10 if model.make_log else 2.2)*max( map( lambda h:h.GetMaximum(), [training, test, training_BSM, test_BSM] ) )
-yRange                 = (0,"auto") #( minY, maxY )
+#yRange                 = (0, "auto") #( minY, maxY )
+yRange                 = "auto" #( minY, maxY )
 
 plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, lumi=args.luminosity, histModifications=histModifications )
 
@@ -612,6 +613,3 @@ plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, lum
 
 ##############
 ##############
-
-
-

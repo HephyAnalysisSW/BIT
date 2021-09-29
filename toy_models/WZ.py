@@ -213,15 +213,16 @@ def getEvents(nEvents):
 
     assert len(x1)==nEvents and len(x2)==nEvents, "Not enough events produced."
     
-    x1 = np.array(x1)
-    x2 = np.array(x2)
+    x1    = np.array(x1)
+    x2    = np.array(x2)
     w_pdf = np.array(w_pdf)
+
+    s       = (15*m['Z'])**2*np.ones(nEvents) #E_LHC**2*x1*x2 #FIXME
 
     phiW    = 2*pi*np.random.random(nEvents)
     phiZ    = 2*pi*np.random.random(nEvents)
     thetaW  = np.arccos( -1+2*np.random.random(nEvents) )
     thetaZ  = np.arccos( -1+2*np.random.random(nEvents) )
-    s       = E_LHC**2*x1*x2
     features = np.transpose(np.array( [s, Theta, phiW, phiZ,  thetaW, thetaZ, lep_w_charge]))
     extra = {'w_pdf': w_pdf, 'x1': x1, 'x2':x2, 's':s}
     return features, extra
