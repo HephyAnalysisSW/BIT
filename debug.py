@@ -39,7 +39,7 @@ def make_debug_plots( bit, training_features, training_weights, training_diff_we
             h_der.Fill( feature[split_i_feature], derivative )
             h_wgt.Fill( feature[split_i_feature], weight )
             #print feature, weight, derivative
-            h_bit.Fill( feature[split_i_feature], weight*bit.predict(feature, max_n_tree=n_tree) )
+            h_bit.Fill( feature[split_i_feature], weight*bit.predict(feature, max_n_tree=n_tree,add_global_score=False) )
             # recall the starting point:
             if n_tree == 0:
                 for i_feature, v_feature in enumerate(feature):
@@ -47,9 +47,10 @@ def make_debug_plots( bit, training_features, training_weights, training_diff_we
 
         h_der_test = ROOT.TH1D("h_derivative_test_%i"%n_tree, "feature %i"%split_i_feature, 50, min_, max_)
         h_der_test.style = styles.lineStyle(ROOT.kBlue)
-        for feature, weight, derivative in zip(test_features[:,split_i_feature], test_weights, test_diff_weights):
-            h_der_test.Fill( feature, derivative )
 
+        global_score = bit.global_score if hasattr( bit, "global_score") else 0
+        for feature, weight, derivative in zip(test_features[:,split_i_feature], test_weights, test_diff_weights):
+            h_der_test.Fill( feature, derivative - weight*global_score )
 
         h_scr = h_der.Clone("h_score_%i"%n_tree)
         h_scr.Divide(h_wgt)
@@ -71,4 +72,3 @@ def make_debug_plots( bit, training_features, training_weights, training_diff_we
         cut_line.SetLineWidth(2)
 
         plotting.draw( plot, plot_directory = os.path.join( plot_directory, "lin" ), drawObjects = [cut_line], copyIndexPHP=True, logY = False)
-

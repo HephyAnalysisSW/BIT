@@ -214,6 +214,8 @@ plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, his
 ##############
 ##############
 
+from debug import make_debug_plots
+
 # Boosting
 n_trees       = 50
 max_depth     = 2
@@ -253,6 +255,15 @@ for derivative in training_weights.keys():
         time2 = time.time()
         boosting_time = time2 - time1
         print ("Boosting time: %.2f seconds" % boosting_time)
+
+        make_debug_plots( bits[derivative], 
+                          training_features, training_weights[tuple()],  
+                          training_weights[derivative], 
+                          test_features, 
+                          test_weights[:,0], 
+                          test_weights_, 
+                          os.path.join(plot_directory, ('_'.join(derivative))),
+                          mva_variables = config.mva_variables) 
 
         # plot loss
         test_scores     = bits[derivative].vectorized_predict(test_features)

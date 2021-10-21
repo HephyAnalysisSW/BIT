@@ -94,7 +94,8 @@ def M(h1, h2, s, Theta, lep_w_charge, eft, der=None):
 
 # pdf(x1) * pdf( x2 ) histo for x1 x2 S > (2*pt_threshold)^2, pt_threshold = 300
 
-feature_names = ['s', 'Theta', 'phiW', 'phiZ', 'thetaW', 'thetaZ', 'lep_w_charge'] 
+feature_names =  ['sqrt_s', 'Theta', 'phiW', 'phiZ', 'thetaW', 'thetaZ', 'lep_w_charge'] 
+feature_names += ['thetaW_sPhiW', 'thetaW_sPhiZ', 'thetaW_sPhiW_sPhiZ', 'thetaZ_sPhiW', 'thetaZ_sPhiZ', 'thetaZ_sPhiW_sPhiZ', 'Theta_sPhiW', 'Theta_sPhiZ', 'Theta_sPhiW_sPhiZ']
 
 import csv
 
@@ -135,7 +136,7 @@ with open('/eos/vbc/user/robert.schoefbeck/TMB/pdf_data/WZ_x1x2_ubar_d.txt') as 
 
 p_neg_charge = h_pdf_ubar_d.Integral()/(h_pdf_ubar_d.Integral()+h_pdf_dbar_u.Integral())
 
-#import Analysis.Tools.syncer as syncer
+import Analysis.Tools.syncer as syncer
 #c1 = ROOT.TCanvas()
 #h_pdf_dbar_u.Draw('COLZ')
 #c1.SetLogz()
@@ -164,26 +165,26 @@ def getEvents(nEvents):
     #cosTheta_max = cos(np.arcsin((2*pt_threshold/E_LHC)**2))
     #cosTheta_min = -cosTheta_max
 
-    cosTheta_max = 0.95 #FIXME this is probably too restrictive
-    cosTheta_min = -0.95
+    cosTheta_max = 0.98 #FIXME 0.95 is probably too restrictive
+    cosTheta_min = -0.98
     
     Theta   = np.arccos( cosTheta_min+(cosTheta_max-cosTheta_min)*np.random.random(nEvents) ) # no phase space factors from two-particle phase space when cos(theta) is flat
     
-    #min_x1  = (2*pt_threshold/(E_LHC*np.sin(Theta)))**2
-    ## x1 values scaled to [a,1] interval
-    #x1      = min_x1 + (1-min_x1)*np.random.random(nEvents)
-    #min_x2  = (2*pt_threshold/(E_LHC*np.sin(Theta)))**2/x1
-    #x2      = min_x2 + (1-min_x2)*np.random.random(nEvents)
+    min_x1  = (2*pt_threshold/(E_LHC*np.sin(Theta)))**2
+    # x1 values scaled to [a,1] interval
+    x1      = min_x1 + (1-min_x1)*np.random.random(nEvents)
+    min_x2  = (2*pt_threshold/(E_LHC*np.sin(Theta)))**2/x1
+    x2      = min_x2 + (1-min_x2)*np.random.random(nEvents)
 
     min_x1x2 = (2*pt_threshold/(E_LHC*np.sin(Theta)))**2 
 
     # some of the CTEQ PDFs are negative above this value
-    #x2[x2>0.97] = 0.97
-    #x1[x1>0.97] = 0.97
+    x2[x2>0.97] = 0.97
+    x1[x1>0.97] = 0.97
 
-    shuffle       = np.random.randint(2,size=nEvents).astype(bool)
     lep_w_charge  = np.random.choice([-1,1],size=nEvents,p=np.array([p_neg_charge, 1-p_neg_charge]))
 
+    shuffle       = np.random.randint(2,size=nEvents).astype(bool)
     w_pdf = []
     x1    = []
     x2    = []
@@ -206,31 +207,44 @@ def getEvents(nEvents):
             x1_, x2_ = x2_, x1_ 
 
         if h_pdf.GetBinContent( h_pdf.FindBin( x1_, x2_ ))<=0:
-            print lep_w_charge[i_x], x1_, x2_, h_pdf.GetBinContent( h_pdf.FindBin( x1_, x2_ )),"s", sqrt(x1_*x2_*13000**2)
+            print lep_w_charge[i_x], x1_, x2_, h_pdf.GetBinContent( h_pdf.FindBin( x1_, x2_ )),"sqrt-s", sqrt(x1_*x2_*13000**2)
         w_pdf.append( h_pdf.GetBinContent( h_pdf.FindBin( x1_, x2_ )))
         x1.append(float(x1_))
         x2.append(float(x2_))
 
-    assert len(x1)==nEvents and len(x2)==nEvents, "Not enough events produced."
-    
     x1    = np.array(x1)
     x2    = np.array(x2)
     w_pdf = np.array(w_pdf)
 
-    s       = (15*m['Z'])**2*np.ones(nEvents) #E_LHC**2*x1*x2 #FIXME
+    assert len(x1)==nEvents and len(x2)==nEvents, "Not enough events produced."
+    
+    #s       = (15*m['Z'])**2*np.ones(nEvents) #FIXME
+    sqrt_s   = np.sqrt(E_LHC**2*x1*x2)
 
     phiW    = 2*pi*np.random.random(nEvents)
     phiZ    = 2*pi*np.random.random(nEvents)
     thetaW  = np.arccos( -1+2*np.random.random(nEvents) )
     thetaZ  = np.arccos( -1+2*np.random.random(nEvents) )
-    features = np.transpose(np.array( [s, Theta, phiW, phiZ,  thetaW, thetaZ, lep_w_charge]))
-    extra = {'w_pdf': w_pdf, 'x1': x1, 'x2':x2, 's':s}
-    return features, extra
+
+    thetaW_sPhiW        = thetaW*np.sin(phiW)
+    thetaW_sPhiZ        = thetaW*np.sin(phiZ)
+    thetaW_sPhiW_sPhiZ  = thetaW*np.sin(phiZ)*np.sin(phiW)
+    thetaZ_sPhiW        = thetaZ*np.sin(phiW)
+    thetaZ_sPhiZ        = thetaZ*np.sin(phiZ)
+    thetaZ_sPhiW_sPhiZ  = thetaZ*np.sin(phiZ)*np.sin(phiW)
+    Theta_sPhiW         = Theta*np.sin(phiW)
+    Theta_sPhiZ         = Theta*np.sin(phiZ)
+    Theta_sPhiW_sPhiZ   = Theta*np.sin(phiZ)*np.sin(phiW)
+     
+    features = np.transpose(np.array( [sqrt_s, Theta, phiW, phiZ,  thetaW, thetaZ, lep_w_charge, thetaW_sPhiW, thetaW_sPhiZ, thetaW_sPhiW_sPhiZ, thetaZ_sPhiW, thetaZ_sPhiZ, thetaZ_sPhiW_sPhiZ, Theta_sPhiW, Theta_sPhiZ, Theta_sPhiW_sPhiZ]))
+
+    #extra = {'w_pdf': w_pdf, 'x1': x1, 'x2':x2, 's':s}
+    return features, None #extra
 
 
 def getWeights( features, eft): 
     # production
-    s               = features[:,feature_names.index('s')]
+    sqrt_s          = features[:,feature_names.index('sqrt_s')]
     Theta           = features[:,feature_names.index('Theta')]
     lep_w_charge    = features[:,feature_names.index('lep_w_charge')]
     phiW            = features[:,feature_names.index('phiW')]
@@ -238,6 +252,7 @@ def getWeights( features, eft):
     thetaW          = features[:,feature_names.index('thetaW')]
     thetaZ          = features[:,feature_names.index('thetaZ')]
 
+    s       = sqrt_s**2
     kaellen = s**2 + m['W']**2 + m['Z']**2 - 2*s*(m['W'] + m['Z']) - 2*m['W']*m['Z']
 
     weights = { key :np.zeros( len(features) ) for key in [ (), ('cW',), ('c3PQ',), ('cW', 'cW'), ('c3PQ', 'cW'), ('c3PQ','c3PQ')] }
@@ -293,9 +308,9 @@ if __name__=="__main__":
     efts = map(lambda e:make_eft(**e), [ {}, {'cW':0.2}, {'cW':.4}, {'cW':0.2, 'c3PQ':0.2}, {'c3PQ':0.2}, {'c3PQ':0.4} ] )
 
     Nbins = 50
-    funcs   = {'s':sqrt,             'Theta':cos,                                                          'thetaW':cos,                'thetaZ':cos}
-    binning = {'s':[Nbins,600,3000], 'Theta':[Nbins,-1,1],  'phiW':[Nbins,0,2*pi], 'phiZ':[Nbins,0,2*pi],  'thetaW':[Nbins,-1,1],       'thetaZ':[Nbins,-1,1],       'lep_w_charge':[3,-1,2]}
-    nice_name={'s':"#sqrt{s}",       'Theta':"cos(#Theta)", 'phiW':"#phi_{W}",     'phiZ':"#phi_{Z}",      'thetaW':"cos(#theta_{W})",  'thetaZ':"cos(#theta_{Z})",  'lep_w_charge':"charge(l_{W})"}
+    funcs   = {                      'Theta':cos,                                                          'thetaW':cos,                'thetaZ':cos}
+    binning = {'sqrt_s':[Nbins,0,3000], 'Theta':[Nbins,-1,1],  'phiW':[Nbins,0,2*pi], 'phiZ':[Nbins,0,2*pi],  'thetaW':[Nbins,-1,1],       'thetaZ':[Nbins,-1,1],       'lep_w_charge':[3,-1,2]}
+    nice_name={'sqrt_s':"#sqrt{s}",     'Theta':"cos(#Theta)", 'phiW':"#phi_{W}",     'phiZ':"#phi_{Z}",      'thetaW':"cos(#theta_{W})",  'thetaZ':"cos(#theta_{Z})",  'lep_w_charge':"charge(l_{W})"}
 
     colors = [ROOT.kBlack, ROOT.kBlue, ROOT.kGreen, ROOT.kMagenta, ROOT.kCyan, ROOT.kRed]
     

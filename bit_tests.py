@@ -43,6 +43,7 @@ argParser.add_argument("--fraction_alpha",     action="store",      default=1,  
 argParser.add_argument("--max_uncertainty",    action="store",      default=0,             type=float,                                       help="Maximum allowed relative uncertainty in each node split")
 argParser.add_argument("--bagging_fraction",   action="store",      default=1.,            type=float,                                       help="Bagging fraction")
 argParser.add_argument("--max_n_split",        action="store",      default=-1,            type=int,                                         help="Maximum number of splits in node split")
+
 args = argParser.parse_args()
 
 # import the toy model

@@ -14,6 +14,7 @@ default_cfg = {
     "learning_rate" : "auto", 
     "weights_update_method" : "vectorized", 
     "calibrated" : False,
+    "global_score_subtraction": False,
     "bagging_fraction": 1.,
 }
 
@@ -45,6 +46,13 @@ class BoostedInformationTree:
         self.training_diff_weights  = np.copy(training_diff_weights) # Protect the outside from reweighting.
         self.training_features      = training_features
 
+        # recall the global score
+        if self.cfg["global_score_subtraction"]:
+            weight_diff_sum         = self.training_diff_weights.sum()
+            self.global_score       = weight_diff_sum/self.training_weights.sum()
+            self.training_diff_weights -= self.training_weights*self.global_score 
+            print "Subtracted a global score of %3.2f" % self.global_score 
+
         # Will hold the trees
         self.trees                  = []
 
@@ -63,6 +71,10 @@ class BoostedInformationTree:
         new_instance.trees = old_instance.trees
         if hasattr( old_instance, "calibration_min_fac" ):
             new_instance.calibration_min_fac = old_instance.calibration_min_fac
+        else:
+            new_instance.calibration_min_fac = ( 0, 1 )
+        if hasattr( old_instance, "global_score" ):
+            new_instance.global_score = old_instance.global_score
         else:
             new_instance.calibration_min_fac = ( 0, 1 )
         return new_instance  
@@ -152,7 +164,7 @@ class BoostedInformationTree:
         del self.training_diff_weights  
         del self.training_features      
 
-    def predict( self, feature_array, max_n_tree = None, summed = True, last_tree_counts_full = False):
+    def predict( self, feature_array, max_n_tree = None, summed = True, last_tree_counts_full = False, add_global_score = True):
         # list learning rates
         learning_rates = self.learning_rate*np.ones(max_n_tree if max_n_tree is not None else self.n_trees)
         # keep the last tree?
@@ -161,12 +173,16 @@ class BoostedInformationTree:
             
         predictions = np.array([ tree.predict( feature_array ) for tree in self.trees[:max_n_tree] ])
 
+        # Add back the global score if it was subtracted
+        if self.cfg["global_score_subtraction"] and add_global_score:
+            predictions += self.global_score
+             
         if summed:
             return ( np.dot(learning_rates, predictions) - self.calibration_min_fac[0])*self.calibration_min_fac[1]
         else:
             return ( learning_rates*predictions - self.calibration_min_fac[0])*self.calibration_min_fac[1]
     
-    def vectorized_predict( self, feature_array, max_n_tree = None, summed = True, last_tree_counts_full = False):
+    def vectorized_predict( self, feature_array, max_n_tree = None, summed = True, last_tree_counts_full = False, add_global_score = True):
         # list learning rates
         learning_rates = self.learning_rate*np.ones(max_n_tree if max_n_tree is not None else self.n_trees)
         # keep the last tree?
@@ -174,6 +190,10 @@ class BoostedInformationTree:
             learning_rates[-1] = 1
             
         predictions = np.array([ tree.vectorized_predict( feature_array ) for tree in self.trees[:max_n_tree] ])
+
+        # Add back the global score if it was subtracted
+        if self.cfg["global_score_subtraction"] and add_global_score:
+            predictions += self.global_score
             
         if summed:
             return (np.dot(learning_rates, predictions) - self.calibration_min_fac[0])*self.calibration_min_fac[1]
