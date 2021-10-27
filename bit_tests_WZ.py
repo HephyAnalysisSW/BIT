@@ -14,7 +14,7 @@ import copy
 from RootTools.core.standard   import *
 
 # Analysis
-import Analysis.Tools.syncer
+import Analysis.Tools.syncer as syncer
 
 # BIT
 from BoostedInformationTree import BoostedInformationTree
