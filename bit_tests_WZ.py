@@ -377,65 +377,65 @@ for derivative in training_weights.keys():
 
         plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, plotLog=False, titleOffset=0.08, histModifications=histModifications )
 
-#h_truth     = ROOT.TH1F("h_truth", "h_truth", 40, -.03, .05)
-#h_pred      = ROOT.TH1F("h_pred", "h_pred",   40, -.03, .05)
-#h_pred_lin  = ROOT.TH1F("h_pred_lin", "h_pred_lin",   40, -.03, .05)
-#h_truth.style = styles.lineStyle( ROOT.kBlack, width=2, dashed=False )
-#h_pred .style = styles.lineStyle( ROOT.kBlue, width=2, dashed=True )
-#h_pred_lin .style = styles.lineStyle( ROOT.kGreen, width=2, dashed=True )
-#h_truth.legendText = "ext. log(L(x|#theta)/L(x|0))"
-#h_pred.legendText  = "pred. log-likelihood ratio"
-#h_pred.legendText  = "predicted (quadratic)"
-#h_pred_lin.legendText  = "predicted (linear)"
-#
-#def compute_weights(weights, theta, theta_ref, param):
-#   return weights[()] \
-#    + np.array( [ (theta-theta_ref)*weights[(param,)]]).sum(axis=0)\
-#    + np.array( [ 0.5*(theta-theta_ref)*(theta-theta_ref)*weights[(param, param)]] ).sum(axis=0)
-#
-#def predict_weight_ratio(bit_predictions, theta, theta_ref, param):
-#    lin       = np.array( [ (theta-theta_ref)*bit_predictions[(param,)] ] ).sum(axis=0)
-#    quadratic = np.array( [ 0.5*(theta-theta_ref)*(theta-theta_ref)*bit_predictions[(param, param)] ] ).sum(axis=0)
-#    return 1.+lin, 1.+lin+quadratic
-#
-#for i_plot_theta, plot_theta in enumerate(np.arange(-.03,.05,.002)):
-#    w1 = compute_weights( test_weights, plot_theta, 0, param)
-#    w0 = compute_weights( test_weights, 0,0, param)
-# 
-#    ext_Delta_NLL      = w1 - w0 - w0*np.log(w1/w0)
-# 
-#    lin, quad = np.log(predict_weight_ratio(bit_predictions, plot_theta, 0, param))
-#    ext_Delta_NLL_pred     = w1 - w0 - w0*quad
-#    ext_Delta_NLL_pred_lin = w1 - w0 - w0*lin
-#
-#    i_bin = h_truth.FindBin(plot_theta)
-#
-#    ext_Delta_NLL_sum = ext_Delta_NLL.sum()
-#    ext_Delta_NLL_pred_sum = ext_Delta_NLL_pred.sum()
-#    ext_Delta_NLL_pred_lin_sum = ext_Delta_NLL_pred_lin.sum()
-#
-#    if ext_Delta_NLL_sum<float('inf'):
-#        h_truth.SetBinContent( i_bin, ext_Delta_NLL_sum )
-#    if ext_Delta_NLL_pred_sum<float('inf'):
-#        h_pred.SetBinContent( i_bin, ext_Delta_NLL_pred_sum )
-#    if ext_Delta_NLL_pred_lin_sum<float('inf'):
-#        h_pred_lin.SetBinContent( i_bin, ext_Delta_NLL_pred_lin_sum )
-#
-#    print plot_theta, "true", ext_Delta_NLL.sum(), "pred", ext_Delta_NLL_pred.sum(), "lin", ext_Delta_NLL_pred_lin.sum()
-#
-#plot   = Plot.fromHisto( "likelihood",  [[h_truth], [h_pred], [h_pred_lin]], texX="#theta", texY="LLR" )
-#
-#histModifications      = [] #lambda h: h.GetYaxis().SetTitleOffset(2.2) ]
-#histModifications += [ lambda h: h.GetXaxis().SetTitleSize(26) ]
-#histModifications += [ lambda h: h.GetYaxis().SetTitleSize(26) ]
-#histModifications += [ lambda h: h.GetXaxis().SetLabelSize(22)  ]
-#histModifications += [ lambda h: h.GetYaxis().SetLabelSize(22)  ]
-#
-#ratioHistModifications = [] #lambda h: h.GetYaxis().SetTitleOffset(2.2) ]
-#ratio                  = None #{'yRange':(0.51,1.49), 'texY':"BSM/SM", "histModifications":ratioHistModifications}
-#legend                 = [(0.2,0.74,0.8,0.88),1]
-#yRange                 = "auto"
-#plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, histModifications=histModifications )
+h_truth     = ROOT.TH1F("h_truth", "h_truth", 40, -.03, .05)
+h_pred      = ROOT.TH1F("h_pred", "h_pred",   40, -.03, .05)
+h_pred_lin  = ROOT.TH1F("h_pred_lin", "h_pred_lin",   40, -.03, .05)
+h_truth.style = styles.lineStyle( ROOT.kBlack, width=2, dashed=False )
+h_pred .style = styles.lineStyle( ROOT.kBlue, width=2, dashed=True )
+h_pred_lin .style = styles.lineStyle( ROOT.kGreen, width=2, dashed=True )
+h_truth.legendText = "ext. log(L(x|#theta)/L(x|0))"
+h_pred.legendText  = "pred. log-likelihood ratio"
+h_pred.legendText  = "predicted (quadratic)"
+h_pred_lin.legendText  = "predicted (linear)"
+
+def compute_weights(weights, theta, theta_ref, param):
+   return weights[()] \
+    + np.array( [ (theta-theta_ref)*weights[(param,)]]).sum(axis=0)\
+    + np.array( [ 0.5*(theta-theta_ref)*(theta-theta_ref)*weights[(param, param)]] ).sum(axis=0)
+
+def predict_weight_ratio(bit_predictions, theta, theta_ref, param):
+    lin       = np.array( [ (theta-theta_ref)*bit_predictions[(param,)] ] ).sum(axis=0)
+    quadratic = np.array( [ 0.5*(theta-theta_ref)*(theta-theta_ref)*bit_predictions[(param, param)] ] ).sum(axis=0)
+    return 1.+lin, 1.+lin+quadratic
+
+for i_plot_theta, plot_theta in enumerate(np.arange(-.03,.05,.002)):
+    w1 = compute_weights( test_weights, plot_theta, 0, param)
+    w0 = compute_weights( test_weights, 0,0, param)
+ 
+    ext_Delta_NLL      = w1 - w0 - w0*np.log(w1/w0)
+ 
+    lin, quad = np.log(predict_weight_ratio(bit_predictions, plot_theta, 0, param))
+    ext_Delta_NLL_pred     = w1 - w0 - w0*quad
+    ext_Delta_NLL_pred_lin = w1 - w0 - w0*lin
+
+    i_bin = h_truth.FindBin(plot_theta)
+
+    ext_Delta_NLL_sum = ext_Delta_NLL.sum()
+    ext_Delta_NLL_pred_sum = ext_Delta_NLL_pred.sum()
+    ext_Delta_NLL_pred_lin_sum = ext_Delta_NLL_pred_lin.sum()
+
+    if ext_Delta_NLL_sum<float('inf'):
+        h_truth.SetBinContent( i_bin, ext_Delta_NLL_sum )
+    if ext_Delta_NLL_pred_sum<float('inf'):
+        h_pred.SetBinContent( i_bin, ext_Delta_NLL_pred_sum )
+    if ext_Delta_NLL_pred_lin_sum<float('inf'):
+        h_pred_lin.SetBinContent( i_bin, ext_Delta_NLL_pred_lin_sum )
+
+    print plot_theta, "true", ext_Delta_NLL.sum(), "pred", ext_Delta_NLL_pred.sum(), "lin", ext_Delta_NLL_pred_lin.sum()
+
+plot   = Plot.fromHisto( "likelihood",  [[h_truth], [h_pred], [h_pred_lin]], texX="#theta", texY="LLR" )
+
+histModifications      = [] #lambda h: h.GetYaxis().SetTitleOffset(2.2) ]
+histModifications += [ lambda h: h.GetXaxis().SetTitleSize(26) ]
+histModifications += [ lambda h: h.GetYaxis().SetTitleSize(26) ]
+histModifications += [ lambda h: h.GetXaxis().SetLabelSize(22)  ]
+histModifications += [ lambda h: h.GetYaxis().SetLabelSize(22)  ]
+
+ratioHistModifications = [] #lambda h: h.GetYaxis().SetTitleOffset(2.2) ]
+ratio                  = None #{'yRange':(0.51,1.49), 'texY':"BSM/SM", "histModifications":ratioHistModifications}
+legend                 = [(0.2,0.74,0.8,0.88),1]
+yRange                 = "auto"
+plot1DHist( plot, plot_directory, yRange=yRange, ratio=ratio, legend=legend, histModifications=histModifications )
 
 
 #########################################
@@ -463,4 +463,4 @@ for derivative in training_weights.keys():
 #    ext_Delta_NLL      = w1 - w0 - w0*np.log(w1/w0)
 #    ext_Delta_NLL_pred = w1 - w0 - w0*np.log(predict_weight_ratio(bit_predictions, plot_theta, theta_ref))
 #    print plot_theta, "true", ext_Delta_NLL.sum(), "pred", ext_Delta_NLL_pred.sum()
-#
+

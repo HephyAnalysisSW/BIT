@@ -76,8 +76,17 @@ class BoostedInformationTree:
         if hasattr( old_instance, "global_score" ):
             new_instance.global_score = old_instance.global_score
         else:
-            new_instance.calibration_min_fac = ( 0, 1 )
+            new_instance.global_score = 0
         return new_instance  
+
+    # Do not save debug_data
+    def __getstate__(self):
+        d = self.__dict__
+        self_dict = {k : d[k] for k in d if k != 'debug_data'}
+        return self_dict
+
+    def __setstate__(self, state):
+        self.__dict__ = state
 
     def save(self, filename):
         pickle.dump( self, file( filename, 'w' ) )
