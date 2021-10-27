@@ -6,7 +6,6 @@ import os
 from math import sin, cos, sqrt, pi, log
 '''Implement the model from https://arxiv.org/pdf/2007.10356.pdf'''
 
-
 # EWSB constants
 e   = 0.3028 #sqrt(4*pi*alpha)
 s2w = 0.23122

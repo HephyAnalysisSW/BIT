@@ -205,11 +205,13 @@ class Node:
             total_diff_weight_sum    = sorted_diff_weight_sums[-1]
             sorted_weight_sums       = sorted_weight_sums[0:-1]
             sorted_diff_weight_sums  = sorted_diff_weight_sums[0:-1]
-            fisher_information_left  = sorted_diff_weight_sums**2/sorted_weight_sums
+            #fisher_information_left  = sorted_diff_weight_sums**2/sorted_weight_sums
+            fisher_information_left  = np.divide(sorted_diff_weight_sums**2, sorted_weight_sums, out=np.zeros_like(sorted_diff_weight_sums), where=sorted_weight_sums!=0) 
 
             sorted_diff_weight_sums_right = total_diff_weight_sum-sorted_diff_weight_sums
             sorted_weight_sums_right = total_weight_sum-sorted_weight_sums
-            fisher_information_right = sorted_diff_weight_sums_right**2/sorted_weight_sums_right
+            #fisher_information_right = sorted_diff_weight_sums_right**2/sorted_weight_sums_right
+            fisher_information_right  = np.divide(sorted_diff_weight_sums_right**2, sorted_weight_sums_right, out=np.zeros_like(sorted_diff_weight_sums_right), where=sorted_weight_sums_right!=0) 
 
             fisher_gains = fisher_information_left + fisher_information_right
             
