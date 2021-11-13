@@ -96,6 +96,31 @@ def M(h1, h2, s, Theta, lep_w_charge, eft, der=None):
 feature_names =  ['sqrt_s', 'Theta', 'phiW', 'phiZ', 'thetaW', 'thetaZ', 'lep_w_charge'] 
 feature_names += ['thetaW_sPhiW', 'thetaW_sPhiZ', 'thetaW_sPhiW_sPhiZ', 'thetaZ_sPhiW', 'thetaZ_sPhiZ', 'thetaZ_sPhiW_sPhiZ', 'Theta_sPhiW', 'Theta_sPhiZ', 'Theta_sPhiW_sPhiZ']
 
+#funcs   = {
+#            'Theta':cos,
+#            'thetaW':cos,
+#            'thetaZ':cos,}
+
+Nbins = 50
+plot_options = {
+            'sqrt_s': {'binning':[Nbins,600,3000],          'tex':"#sqrt{s}",},
+            'Theta':  {'binning':[Nbins,-pi,pi],            'tex':"#Theta",},
+            'phiW':   {'binning':[Nbins,0,2*pi],            'tex':"#phi_{W}",},
+            'phiZ':   {'binning':[Nbins,0,2*pi],            'tex':"#phi_{Z}",},
+            'thetaW': {'binning':[Nbins,-pi, pi],           'tex':"#theta_{W}",},
+            'thetaZ': {'binning':[Nbins,-pi, pi],           'tex':"#theta_{Z}",},
+            'lep_w_charge':{'binning':[3,-1,2],             'tex':"charge(l_{W})",},
+            'thetaW_sPhiZ':{'binning':[Nbins,-pi,pi],        'tex':"#theta_{W} #times sin(#phi_{Z})",},
+            'thetaZ_sPhiZ':{'binning':[Nbins,-pi,pi],        'tex':"#theta_{Z} #times sin(#phi_{Z})",},
+            'thetaW_sPhiW':{'binning':[Nbins,-pi,pi],        'tex':"#theta_{W} #times sin(#phi_{W})",},
+            'thetaZ_sPhiW':{'binning':[Nbins,-pi,pi],        'tex':"#theta_{Z} #times sin(#phi_{W})",},
+            'thetaW_sPhiW_sPhiZ':{'binning':[Nbins,-pi,pi],  'tex':"#theta_{W} #times sin(#phi_{Z})sin(#phi_{W})",},
+            'thetaZ_sPhiW_sPhiZ':{'binning':[Nbins,-pi,pi],  'tex':"#theta_{Z} #times sin(#phi_{Z})sin(#phi_{W})",},
+            'Theta_sPhiW':{'binning':[Nbins,-pi,pi],         'tex':"#Theta #times sin(#phi_{W})",},
+            'Theta_sPhiZ':{'binning':[Nbins,-pi,pi],         'tex':"#Theta #times sin(#phi_{Z})",},
+            'Theta_sPhiW_sPhiZ':{'binning':[Nbins,-pi,pi],   'tex':"#Theta #times sin(#phi_{W})sin(#phi_{Z})",},
+            }
+
 import csv
 
 pt_threshold = 300.
@@ -164,10 +189,10 @@ def getEvents(nEvents):
     #cosTheta_max = cos(np.arcsin((2*pt_threshold/E_LHC)**2))
     #cosTheta_min = -cosTheta_max
 
-    cosTheta_max = 0.98 #FIXME 0.95 is probably too restrictive
-    cosTheta_min = -0.98
+    cTheta_max = 0.98 #FIXME 0.95 is probably too restrictive
+    cTheta_min = -0.98
     
-    Theta   = np.arccos( cosTheta_min+(cosTheta_max-cosTheta_min)*np.random.random(nEvents) ) # no phase space factors from two-particle phase space when cos(theta) is flat
+    Theta   = np.arccos( cTheta_min+(cTheta_max-cTheta_min)*np.random.random(nEvents) ) # no phase space factors from two-particle phase space when cos(theta) is flat
     
     min_x1  = (2*pt_threshold/(E_LHC*np.sin(Theta)))**2
     # x1 values scaled to [a,1] interval
@@ -222,8 +247,8 @@ def getEvents(nEvents):
 
     phiW    = 2*pi*np.random.random(nEvents)
     phiZ    = 2*pi*np.random.random(nEvents)
-    thetaW  = np.arccos( -1+2*np.random.random(nEvents) )
-    thetaZ  = np.arccos( -1+2*np.random.random(nEvents) )
+    thetaW  = np.arccos(-1+2*np.random.random(nEvents)) 
+    thetaZ  = np.arccos(-1+2*np.random.random(nEvents))
 
     thetaW_sPhiW        = thetaW*np.sin(phiW)
     thetaW_sPhiZ        = thetaW*np.sin(phiZ)
@@ -235,7 +260,7 @@ def getEvents(nEvents):
     Theta_sPhiZ         = Theta*np.sin(phiZ)
     Theta_sPhiW_sPhiZ   = Theta*np.sin(phiZ)*np.sin(phiW)
      
-    features = np.transpose(np.array( [sqrt_s, Theta, phiW, phiZ,  thetaW, thetaZ, lep_w_charge, thetaW_sPhiW, thetaW_sPhiZ, thetaW_sPhiW_sPhiZ, thetaZ_sPhiW, thetaZ_sPhiZ, thetaZ_sPhiW_sPhiZ, Theta_sPhiW, Theta_sPhiZ, Theta_sPhiW_sPhiZ]))
+    features = np.transpose(np.array( [sqrt_s, Theta, phiW, phiZ, thetaW, thetaZ, lep_w_charge, thetaW_sPhiW, thetaW_sPhiZ, thetaW_sPhiW_sPhiZ, thetaZ_sPhiW, thetaZ_sPhiZ, thetaZ_sPhiW_sPhiZ, Theta_sPhiW, Theta_sPhiZ, Theta_sPhiW_sPhiZ]))
 
     #extra = {'w_pdf': w_pdf, 'x1': x1, 'x2':x2, 's':s}
     return features, None #extra

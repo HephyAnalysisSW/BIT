@@ -63,8 +63,8 @@ def make_debug_plots( bit, training_features, training_weights, training_diff_we
         h_bit      .legendText = "#sum( w#times t(x)) step %i"%n_tree
 
         plot = Plot.fromHisto("der_%03i"%n_tree, [[h_der_start[split_i_feature]], [h_der_test], [h_der], [h_bit]], 
-            texX = "feature %i"%split_i_feature if mva_variables is None else mva_variables[split_i_feature][0], 
-            texY = "#sum(w')")
+            texX = "feature %i"%split_i_feature if mva_variables is None else mva_variables[split_i_feature], 
+            texY = "E(score)")
 
         cut_line = ROOT.TLine( tree.split_value, h_der_start[split_i_feature].GetMinimum(), split_value, h_der_start[split_i_feature].GetMaximum() )
 

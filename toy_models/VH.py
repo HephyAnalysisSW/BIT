@@ -6,20 +6,6 @@ from math import sin, cos, sqrt
 '''Implement the model from https://arxiv.org/pdf/1912.07628.pdf
 '''
 
-# Eq. 3.6
-def f_i(Theta, theta, phi):
-    return np.array([\
-     sin(Theta)**2*sin(theta)**2,
-     cos(Theta)*cos(theta),
-     (1+cos(Theta)**2)*(1+cos(theta)**2),
-     cos(phi)*sin(Theta)*sin(theta),
-     cos(phi)*sin(Theta)*sin(theta)*cos(Theta)*cos(theta),
-     sin(phi)*sin(Theta)*sin(theta),
-     sin(phi)*sin(Theta)*sin(theta)*cos(Theta)*cos(theta),
-     cos(2*phi)*sin(Theta)**2*sin(theta)**2,
-     sin(2*phi)*sin(Theta)**2*sin(theta)**2,
-    ])
-
 # EWSB constants
 e   = 0.3028 #sqrt(4*pi*alpha)
 s2w = 0.23122
@@ -27,152 +13,90 @@ sw  = sqrt(s2w)
 c2w = 1-s2w
 cw  = sqrt(c2w)
 g   = e/sw
-
+gZ  = g/cw
 # boson masses and widths
 m = {
     'W':80.379,
     'Z':91.1876,
+    'H':125.1,
     }
 Gamma = {
     'W':2.085,
     'Z':2.4952,
     }
 
-# SM quantum numbers
-T3 = {
-    'lL': -0.5,
-    'lR':  0.,
-    'uL': 0.5,
-    'dL': -0.5,
-    }
-Q = {
-    'lL': -1.,
-    'lR': -1.,
-    }
-Y  = {
-    'uL':1/3,
-    'dL':1/3,
-    'lL':-1.,
-    'lR':-2.,
-}
+sqrt_2 = sqrt(2)
 
-# V-lepton couplings
-g_l_V  = {
-    'W': { 'lL':g/sqrt(2),
-           'lR':0.,
-         },
-    'Z': {'lL':g*(T3['lL']-Q['lL']*s2w)/cw,
-          'lR':g*(T3['lR']-Q['lR']*s2w)/cw,
-         },
-}
+N_events = 20
+# qq -> ZH
 
-## 1st line p9
-#G_V = {
-#    'W': {
-#        'lL':g**2/sqrt(2),
-#        'lR':0.,
-#        },
-#    'Z': {
-#        'lL':g*g_l_V['Z']['lL']/cw,
-#        'lR':g*g_l_V['Z']['lR']/cw,
-#        },
-#    }
+# helicity of the quark
+sigma_quark  = np.random.choice([+1, -1], N_events)
+# boson helicity
+lambda_boson = np.random.choice([+1, -1, 0], N_events)
+# theta of boson in the qq restframe
+cos_theta = np.random.uniform(-1,1,N_events)
+sin_theta = np.sqrt( 1. - cos_theta**2 ) 
+#quark
+q_pdgId   = np.random.choice([1, 2],N_events)
+# sqrt(s)
+import pdf
 
-# EFT settings, parameters, defaults
-wilson_coefficients    = ['cHW', 'cHB', 'cHWB', 'cHW_tilde', 'cHB_tilde', 'cHWB_tilde', 'cWB', 'cHD', 'cHBox']
-default_eft_parameters = { 'Lambda':1000., 'v':246. }
-default_eft_parameters.update( {var:0. for var in wilson_coefficients} )
+E_LHC          = 13000
 
-def make_eft(**kwargs):
-    result = { key:val for key, val in default_eft_parameters.iteritems() }
-    for key, val in kwargs.iteritems():
-        if not key in wilson_coefficients:
-            raise RuntimeError ("Wilson coefficient not known.")
-        else:
-            result[key] = float(val)
-    return result 
+#abs_y_max = 3 #maximum rapidity
+#sqrt_s_hat_min = m['H'] + m['Z']
+#x_min          = sqrt_s_hat_min**2/E_LHC**2
+#x1             = np.random.uniform( x_min, 1, N_events )
+#x2             = np.random.uniform( x_min/x1, np.ones(N_events), N_events )
+#shuffle        = np.random.choice([0,1], N_events).astype('bool') 
+#x1[shuffle], x2[shuffle] = x2[shuffle], x1[shuffle]
+#y              = 0.5*np.log(x1/x2) 
+#s_hat          = E_LHC**2*x1*x2
+#sqrt_s_hat     = np.sqrt(s_hat)
 
-random_eft = make_eft(**{v:random.random() for v in wilson_coefficients} )
+s_hat_min   = (m['H'] + m['Z'])**2
+s_hat_max   = E_LHC**2
+s_hat       = s_hat_min+(s_hat_max-s_hat_min)*np.random.uniform(0,1,N_events)
+sqrt_s_hat  = np.sqrt(s_hat)
+x_min       = np.sqrt( s_hat/s_hat_max )
+abs_y_max   = - np.log(x_min)
+y           = np.random.uniform(-1,1, N_events)*abs_y_max
 
-# Eq. 3.7
-eps_RL  = {V: (g_l_V[V]['lR']**2 -g_l_V[V]['lL']**2)/(g_l_V[V]['lR']**2+g_l_V[V]['lL']**2) for V in ['W','Z'] }
-# Caption Tab. 2
-mathcal_G_V   = {V:{l:g*g_l_V[V][l]*sqrt(g_l_V[V]['lL']**2+g_l_V[V]['lR']**2)/(cw*Gamma[V]) for l in ['lL', 'lR']} for V in ['Z', 'W']}
+w           = (s_hat + m['Z']**2-m['H']**2)/(2*np.sqrt(s_hat))
+k           = np.sqrt( w**2-m['Z']**2 )
 
-## Eq. 2.4
-#def kappa_gamma_gamma(eft):
-#    return 2*(eft['v']**2/eft['Lambda'])**2*( s2w*eft['cHW'] + c2w*eft['cHB'] - sw*cw*eft['cHWB'] )
-#def kappa_Z_gamma(eft):
-#    return (eft['v']/eft['Lambda'])**2*(2*cw*sw*(eft['cHW']-eft['cHB'])+(s2w-c2w)*eft['cHWB'])
-#def kappa_tilde_Z_gamma(eft):
-#    return (eft['v']/eft['Lambda'])**2*(2*cw*sw*(eft['cHW_tilde']-eft['cHB_tilde'])+(s2w-c2w)*eft['cHWB_tilde'])
-#def kappa_WW(eft):
-#    return 2*(eft['v']/eft['Lambda'])**2*eft['cHW']
-#def kappa_tilde_WW(eft):
-#    return 2*(eft['v']/eft['Lambda'])**2*eft['cHW_tilde']
-#def kappa_ZZ(eft):
-#    return 2*(eft['v']/eft['Lambda'])**2*(c2w*eft['cHW']+s2w*eft['cHB']+sw*cw*eft['cHWB'])
-#def kappa_tilde_ZZ(eft):
-#    return 2*(eft['v']/eft['Lambda'])**2*(c2w*eft['cHW_tilde']+s2w*eft['cHB_tilde']+sw*cw*eft['cHWB_tilde'])
-#
-#def delta_mZ2_over_mZ2( eft ):
-#    return (eft['v']/eft['Lambda'])**2*(2*sw/cw*eft['cWB']+0.5*eft['cHD'])
+# parameters
+h1Z         = 0.
+h2Z         = 0.
+h3Z         = 0.
+h4Ztilde    = 0.
+h1gamma     = 0.
+h2gamma     = 0.
+h3gamma     = 0.
+h4gamma     = 0.
 
-#delta_g_Z = {l: lambda eft, l=l: -g*Y[l]*sw/c2w*(eft['v']/eft['Lambda'])**2*eft['cWB'] + delta_mZ2_over_mZ2(eft)*g/(2.*cw*s2w)*(T3[l]*c2w+Y[l]*s2w) for l in ['lL', 'lR'] }
+# Qq
+Qq = np.zeros(N_events)
+Qq[q_pdgId==1] = -1./3. #d
+Qq[q_pdgId==2] =  2./3. #u
+# T3q
+T3q = np.zeros(N_events)
+T3q[q_pdgId==1] = -1./2. #d
+T3q[q_pdgId==2] =  1./2. #u
 
-#delta_g_W = {l: lambda eft, l=l: delta_mZ2_over_mZ2(eft)*sqrt(2)*g*c2w/(4*s2w) for l in ['lL', 'lR'] }
-#g/cw*(eft['v']/eft['Lambda'])**2*(abs(T3[f])*eft['c1HF']-T3[f]*eft['c3HF']+(0.5-abs(T3[f])*eft['cH'+f[0]])+delta_mZ2_over_mZ2(eft)*g/(2.*cw*s2w)*(T3[f]*c2w+Y[f]*s2w))  for f in ['uL', 'dL']}
+# gZsigma
+gZsigma = np.zeros(N_events)
+gZsigma[sigma_quark==+1] = gZ*(-Qq[sigma_quark==+1]*s2w)
+gZsigma[sigma_quark==-1] = gZ*(T3q[sigma_quark==-1]-Qq[sigma_quark==-1]*s2w)
 
-#def g_h_W_Q(eft)
-#    return sqrt(2)*g*(eft['v']/eft['Lambda'])**2*eft['c3HQ']
+M_hat = np.zeros(N_events)
+abs_lambda_1 = abs(lambda_boson)==1
+M_hat[abs_lambda_1]  =  gZ * m['Z'] * sqrt_s_hat[abs_lambda_1] *( gZsigma[abs_lambda_1] / (s_hat[abs_lambda_1] - m['Z']**2)*(1.+h1Z+h2Z*s_hat[abs_lambda_1]/m['Z']**2+1j*lambda_boson[abs_lambda_1]*h4Ztilde*k[abs_lambda_1]*sqrt_s_hat[abs_lambda_1]/m['Z']**2) + Qq[abs_lambda_1]*e/s_hat[abs_lambda_1]*(h1gamma+h2gamma*s_hat[abs_lambda_1]/m['Z']**2+1j*lambda_boson[abs_lambda_1]*h4gamma*k[abs_lambda_1]*sqrt_s_hat[abs_lambda_1]/m['Z']**2 ) )
+M_hat[~abs_lambda_1] = -gZ *  w[~abs_lambda_1] * sqrt_s_hat[~abs_lambda_1] *( gZsigma[~abs_lambda_1] / (s_hat[~abs_lambda_1] - m['Z']**2)*(1.+h1Z+h2Z*s_hat[~abs_lambda_1]/m['Z']**2+h3Z*k[~abs_lambda_1]**2*sqrt_s_hat[~abs_lambda_1]/(m['Z']**2*w[~abs_lambda_1])) + Qq[~abs_lambda_1]*e/s_hat[~abs_lambda_1]*(h1gamma+h2gamma*s_hat[~abs_lambda_1]/m['Z']**2+h3gamma*k[~abs_lambda_1]**2*sqrt_s_hat[~abs_lambda_1]/(m['Z']**2*w[~abs_lambda_1]) )) 
 
-#delta_g_hat_h_VV =  {'W': lambda eft: (eft['v']/eft['Lambda'])**2*(eft['cHBox']-0.25*eft['cHD']) } # Eq. 2.1
-#delta_g_hat_h_VV    ['Z'] =  lambda eft: delta_g_hat_h_VV['W'](eft) - s2w/c2w*kappa_WW(eft)        # Eq. 2.6 (LEP simplification)
+M = np.zeros(N_events)
+M[abs_lambda_1]  = sigma_quark[abs_lambda_1]*(1+sigma_quark[abs_lambda_1]*lambda_boson[abs_lambda_1]*cos_theta[abs_lambda_1])/sqrt(2.)*M_hat[abs_lambda_1]
+M[~abs_lambda_1] = sin_theta[~abs_lambda_1]*M_hat[~abs_lambda_1]
 
-## Eq 3.2
-#kappa_hat_VV = {'W': { 'lL': kappa_WW, # Eq. 3.2
-#                       'lR': kappa_WW},# Eq. 3.2
-#                'Z': { 'lL': lambda eft: kappa_ZZ(eft)+Q['lL']*e/g_l_V['Z']['lL']*kappa_Z_gamma(eft),
-#                       'lR': lambda eft: kappa_ZZ(eft)+Q['lR']*e/g_l_V['Z']['lR']*kappa_Z_gamma(eft)
-#                     }}
-#kappa_tilde_hat_VV = { 
-#                'W': { 'lL': kappa_tilde_WW,    # assuming the hat is superflous for kappa-tilde WW !!!  
-#                       'lR': kappa_tilde_WW},   # The 'L/R' implementation of kappa_tilde_WW is just so that kappa_tilde_hat_VV can be a nested dictionary for VV=ZZ/WW (kappa_tilde_hat_VV['W']['lR']!=0)
-#                'Z': { 'lL': lambda eft: kappa_ZZ(eft)+Q['lL']*e/g_l_V['Z']['lL']*kappa_Z_gamma(eft),
-#                       'lR': lambda eft: kappa_tilde_ZZ(eft)+Q['lR']*e/g_l_V['Z']['lR']*kappa_tilde_Z_gamma(eft)
-#                     }}
 
-#def a_i(s_hat, V, l, sigma, eft):
-#    gamma = sqrt(s_hat)/(2*m[V]) # Caption Tab. 2
-#    return np.array([\
-#      0.25 *mathcal_G_V[V][l]**2                          *( 1. + 2.*delta_g_hat_h_VV[V](eft)+4.*kappa_hat_VV[V][l](eft)+2.*delta_g_Z[l](eft)),
-#      0.5  *mathcal_G_V[V][l]**2*sigma*eps_RL[V]*gamma**(-2) *(1+4*(kappa_hat_VV[V][l](eft))*gamma**2),
-#      0.125*mathcal_G_V[V][l]**2*gamma**(-2)              *(1+4*(kappa_hat_VV[V][l](eft))*gamma**2),
-#      -0.5 *mathcal_G_V[V][l]**2*sigma*eps_RL[V]/gamma       *(1+2*(kappa_hat_VV[V][l](eft))*gamma**2),
-#      -0.5 *mathcal_G_V[V][l]**2/gamma                    *(1+2*(kappa_hat_VV[V][l](eft))*gamma**2),
-#      -     mathcal_G_V[V][l]**2*sigma*eps_RL[V]*kappa_tilde_hat_VV[V][l](eft)*gamma,
-#      -     mathcal_G_V[V][l]**2*kappa_tilde_hat_VV[V][l](eft)*gamma,
-#      0.125*mathcal_G_V[V][l]**2*(1+4*(kappa_hat_VV[V][l](eft))*gamma**2),
-#      0.5*  mathcal_G_V[V][l]**2*kappa_tilde_hat_VV[V][l](eft),
-#    ])
-#def a_i(s_hat, V, l, sigma, eft):
-#    gamma = sqrt(s_hat)/(2*m[V]) # Caption Tab. 2
-#    return np.array([\
-#      0.25 *mathcal_G_V[V][l]**2                          *( 1. + 2.*eft['delta_g_hat_h_VV'] + 4*eft['kappa_hat_VV']+2*eft['delta_g_Z_f']+eft['g_h_V_f']/g_l_V[V][l]*(-1+4*gamma**2)),
-#      0.5  *mathcal_G_V[V][l]**2*sigma*eps_RL[V]*gamma**(-2) *(1+4*(kappa_hat_VV[V][l](eft))*gamma**2),
-#      0.125*mathcal_G_V[V][l]**2*gamma**(-2)              *(1+4*(kappa_hat_VV[V][l](eft))*gamma**2),
-#      -0.5 *mathcal_G_V[V][l]**2*sigma*eps_RL[V]/gamma       *(1+2*(kappa_hat_VV[V][l](eft))*gamma**2),
-#      -0.5 *mathcal_G_V[V][l]**2/gamma                    *(1+2*(kappa_hat_VV[V][l](eft))*gamma**2),
-#      -     mathcal_G_V[V][l]**2*sigma*eps_RL[V]*kappa_tilde_hat_VV[V][l](eft)*gamma,
-#      -     mathcal_G_V[V][l]**2*kappa_tilde_hat_VV[V][l](eft)*gamma,
-#      0.125*mathcal_G_V[V][l]**2*(1+4*(kappa_hat_VV[V][l](eft))*gamma**2),
-#      0.5*  mathcal_G_V[V][l]**2*kappa_tilde_hat_VV[V][l](eft),
-#    ])
-#
-#class VH:
-#    def __init__( self, eft):
-#        self.eft = eft
-#
-#    def amp_sq(self, s_hat, V, l, sigma, Theta, theta, phi):
-#        '''Eq. 3.5'''
-#        return np.dot( a_i(s_hat, V, l, sigma, self.eft), f_i(Theta, theta, phi))
