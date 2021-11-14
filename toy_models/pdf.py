@@ -23,5 +23,5 @@ def pdf( x, f ):
     histo = h_pdf[f] if type(f)==str else h_pdf[pdg[f]]
     if x<histo.GetXaxis().GetXmin() or x>1:
         raise RuntimeError("Minimum is %5.5f, maximum is 1, you asked for %5.5f" %( histo.GetXaxis().GetXmin(), x))
-    return histo.Interpolate(x)
+    return max(0, histo.Interpolate(x))
         
