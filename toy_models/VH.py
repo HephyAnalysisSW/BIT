@@ -193,7 +193,6 @@ for pdg_quark in [1, 2]:
 # Check(ed) that residual imaginary parts are tiny
 #dsigmaZH = np.real(dsigmaZH)
 
-assert False, ""
 #pp -> WH
 
 # kinematics
