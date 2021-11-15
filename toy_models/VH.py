@@ -78,7 +78,7 @@ h4Ztilde    = 0.
 h1gamma     = 0.
 h2gamma     = 0.
 h3gamma     = 0.
-h4gamma     = 0.
+h4gammatilde= 0.
 
 Cf  = 1.
 #gZsigma[sigma_quark][pdg_quark]
@@ -105,7 +105,7 @@ derivatives   = [ tuple() ] + first_derivatives + second_derivatives
 
 #constZH = 12288*pi**3*Gamma['Z']*E_LHC**2
 constZH = 1 
-dsigmaZH  = np.zeros(N_events).astype('complex128')
+dsigmaZH  = {der:np.zeros(N_events).astype('complex128') for der in derivatives}
 for pdg_quark in [1, 2]:
     qx1     = np.array( [ pdf.pdf( x,  pdg_quark ) for x in x1 ] ) 
     qbarx2  = np.array( [ pdf.pdf( x, -pdg_quark ) for x in x2 ] ) 
@@ -118,15 +118,39 @@ for pdg_quark in [1, 2]:
         M_lambda_sigma_qqbar = {}
         for lambda_boson in [+1, -1, 0]:
             if abs(lambda_boson)==1:
-                Mhat = gZ * m['Z'] * sqrt_s_hat\
-                    * ( gZsigma[sigma_quark][pdg_quark] / (s_hat - m['Z']**2)*(1.+h1Z+h2Z*s_hat/m['Z']**2+1j*lambda_boson*h4Ztilde*k_Z*sqrt_s_hat/m['Z']**2)
-                    +   Qq[pdg_quark]*e/s_hat*(h1gamma+h2gamma*s_hat/m['Z']**2+1j*lambda_boson*h4gammatilde*k_Z*sqrt_s_hat/m['Z']**2 ))
-                M_lambda_sigma_qqbar[lambda_boson] =  sigma_quark*(1+sigma_quark*lambda_boson*cos_theta)/sqrt(2.)*Mhat 
-                M_lambda_sigma_qbarq[lambda_boson] = -sigma_quark*(1-sigma_quark*lambda_boson*cos_theta)/sqrt(2.)*Mhat 
+
+                prefac   = gZ*m['Z']*sqrt_s_hat
+                prefac_1 = prefac * gZsigma[sigma_quark][pdg_quark] / (s_hat - m['Z']**2)
+                prefac_2 = prefac * Qq[pdg_quark]*e/s_hat
+                Mhat = {tuple():            prefac_1*(1.+h1Z+h2Z*s_hat/m['Z']**2+1j*lambda_boson*h4Ztilde*k_Z*sqrt_s_hat/m['Z']**2)\
+                                           +prefac_2*(h1gamma+h2gamma*s_hat/m['Z']**2+1j*lambda_boson*h4gammatilde*k_Z*sqrt_s_hat/m['Z']**2),
+                        ('h1Z',):           prefac_1,
+                        ('h2Z',):           prefac_1*s_hat/m['Z']**2,
+                        ('h3Z',):           np.zeros(N_events),
+                        ('h4Ztilde',):      prefac_1*1j*lambda_boson*k_Z*sqrt_s_hat/m['Z']**2,
+                        ('h1gamma',):       prefac_2,
+                        ('h2gamma',):       prefac_2*s_hat/m['Z']**2,
+                        ('h3gamma',):       np.zeros(N_events),
+                        ('h4gammatilde',):  prefac_2*1j*lambda_boson*k_Z*sqrt_s_hat/m['Z']**2,
+                        }
+                M_lambda_sigma_qqbar[lambda_boson] = {k: sigma_quark*(1+sigma_quark*lambda_boson*cos_theta)/sqrt(2.)*Mhat[k] for k in Mhat.keys()} 
+                M_lambda_sigma_qbarq[lambda_boson] = {k:-sigma_quark*(1-sigma_quark*lambda_boson*cos_theta)/sqrt(2.)*Mhat[k] for k in Mhat.keys()}
             else:
-                M_lambda_sigma_qqbar[lambda_boson] = sin_theta*(-gZ) * w_Z * sqrt_s_hat\
-                    * ( gZsigma[sigma_quark][pdg_quark] / (s_hat - m['Z']**2)*(1.+h1Z+h2Z*s_hat/m['Z']**2+h3Z*k_Z**2*sqrt_s_hat/(m['Z']**2*w_Z)) 
-                    + Qq[pdg_quark]*e/s_hat*(h1gamma+h2gamma*s_hat/m['Z']**2+h3gamma*k_Z**2*sqrt_s_hat/(m['Z']**2*w_Z) ))
+                prefac   = sin_theta*(-gZ)*w_Z*sqrt_s_hat
+                prefac_1 = prefac * gZsigma[sigma_quark][pdg_quark]/(s_hat - m['Z']**2)
+                prefac_2 = prefac * Qq[pdg_quark]*e/s_hat
+                M_lambda_sigma_qqbar[lambda_boson] = \
+                        {tuple():prefac_1*(1.+h1Z+h2Z*s_hat/m['Z']**2+h3Z*k_Z**2*sqrt_s_hat/(m['Z']**2*w_Z)) 
+                               + prefac_2*(h1gamma+h2gamma*s_hat/m['Z']**2+h3gamma*k_Z**2*sqrt_s_hat/(m['Z']**2*w_Z)),
+                        ('h1Z',):           prefac_1,
+                        ('h2Z',):           prefac_1*s_hat/m['Z']**2,
+                        ('h3Z',):           prefac_1*k_Z**2*sqrt_s_hat/(m['Z']**2*w_Z),
+                        ('h4Ztilde',):      np.zeros(N_events),
+                        ('h1gamma',):       prefac_2,
+                        ('h2gamma',):       prefac_2*s_hat/m['Z']**2,
+                        ('h3gamma',):       k_Z**2*sqrt_s_hat/(m['Z']**2*w_Z),
+                        ('h4gammatilde',):  np.zeros(N_events),
+                        }
                 M_lambda_sigma_qbarq[lambda_boson] = M_lambda_sigma_qqbar[lambda_boson]
 
             dtau[lambda_boson] = {}
@@ -139,14 +163,37 @@ for pdg_quark in [1, 2]:
         for lam1 in [+1, -1, 0]:
             for lam2 in [+1, -1, 0]:
                 for tau in [+1, -1]:
-                    dsigmaZH += m['Z']*k_Z/(constZH*s_hat**1.5)*2*gZtaull[tau]**2*Cf*(
-                        qx1*qbarx2*np.conjugate(dtau[lam1][tau])*np.conjugate(M_lambda_sigma_qqbar[lam1])*M_lambda_sigma_qqbar[lam2]*dtau[lam2][tau]
-                        + qbarx1*qx2*np.conjugate(dtau[lam1][tau])*np.conjugate(M_lambda_sigma_qbarq[lam1])*M_lambda_sigma_qbarq[lam2]*dtau[lam2][tau]
+
+                    dsigmaZH_prefac = m['Z']*k_Z/(constZH*s_hat**1.5)*2*gZtaull[tau]**2*Cf
+                    qx1_qbarx2      = qx1*qbarx2
+                    qbarx1_qx2      = qbarx1*qx2 
+                    dsigmaZH[tuple()] += dsigmaZH_prefac*(
+                          qx1_qbarx2*np.conjugate(dtau[lam1][tau])*np.conjugate(M_lambda_sigma_qqbar[lam1][tuple()])*M_lambda_sigma_qqbar[lam2][tuple()]*dtau[lam2][tau]
+                        + qbarx1_qx2*np.conjugate(dtau[lam1][tau])*np.conjugate(M_lambda_sigma_qbarq[lam1][tuple()])*M_lambda_sigma_qbarq[lam2][tuple()]*dtau[lam2][tau]
                     )
+                    for der in first_derivatives:
+                        dsigmaZH[der] += dsigmaZH_prefac*(
+                             qx1_qbarx2*np.conjugate(dtau[lam1][tau])*(
+                                np.conjugate(M_lambda_sigma_qqbar[lam1][der])*M_lambda_sigma_qqbar[lam2][tuple()]*dtau[lam2][tau]
+                               +np.conjugate(M_lambda_sigma_qqbar[lam1][tuple()])*M_lambda_sigma_qqbar[lam2][der]*dtau[lam2][tau])
+                           + qbarx1_qx2*np.conjugate(dtau[lam1][tau])*(
+                                np.conjugate(M_lambda_sigma_qbarq[lam1][der])*M_lambda_sigma_qbarq[lam2][tuple()]*dtau[lam2][tau]
+                               +np.conjugate(M_lambda_sigma_qbarq[lam1][tuple()])*M_lambda_sigma_qbarq[lam2][der]*dtau[lam2][tau])
+                        )
+                    for der in second_derivatives:
+                        dsigmaZH[der] += dsigmaZH_prefac*(
+                             qx1_qbarx2*np.conjugate(dtau[lam1][tau])*(
+                                np.conjugate(M_lambda_sigma_qqbar[lam1][(der[0],)])*M_lambda_sigma_qqbar[lam2][(der[1],)]*dtau[lam2][tau]
+                               +np.conjugate(M_lambda_sigma_qqbar[lam1][(der[1],)])*M_lambda_sigma_qqbar[lam2][(der[0],)]*dtau[lam2][tau])
+                           + qbarx1_qx2*np.conjugate(dtau[lam1][tau])*(
+                                np.conjugate(M_lambda_sigma_qbarq[lam1][(der[0],)])*M_lambda_sigma_qbarq[lam2][(der[1],)]*dtau[lam2][tau]
+                               +np.conjugate(M_lambda_sigma_qbarq[lam1][(der[1],)])*M_lambda_sigma_qbarq[lam2][(der[0],)]*dtau[lam2][tau])
+                        )
 
 # Check(ed) that residual imaginary parts are tiny
-dsigmaZH = np.real(dsigmaZH)
+#dsigmaZH = np.real(dsigmaZH)
 
+assert False, ""
 #pp -> WH
 
 # kinematics
@@ -232,47 +279,54 @@ for lambda_boson in [+1, -1, 0]:
 
 
 first_derivatives = [('h1W',), ('h2W',), ('h3W',), ('h4Wtilde',)]
-second_derivatives= [ ('h1W','h1W'), ('h2W','h2W'), ('h3W', 'h3W'), ('h4Wtilde', 'h4Wtilde'), \
-                 ('h1W','h2W'), ('h1W','h3W'), ('h1W', 'h4Wtilde'), ('h2W', 'h3W'), ('h2W', 'h4Wtilde'), ('h3W', 'h4Wtilde') ]
-derivatives   = [ tuple() ] + first_derivatives + second_derivatives
+second_derivatives= [('h1W','h1W'), ('h2W','h2W'), ('h3W', 'h3W'), ('h4Wtilde', 'h4Wtilde'),\
+                     ('h1W','h2W'), ('h1W','h3W'), ('h1W', 'h4Wtilde'), ('h2W', 'h3W'), ('h2W', 'h4Wtilde'), ('h3W', 'h4Wtilde')]
+derivatives   = [tuple()] + first_derivatives + second_derivatives
 
 dsigmaWplusH  = {der:np.zeros(N_events).astype('complex128') for der in derivatives}
 dsigmaWminusH = {der:np.zeros(N_events).astype('complex128') for der in derivatives}
 
 for lam1 in [+1, -1, 0]:
     for lam2 in [+1, -1, 0]:
-        # W+
-
+        # pp->HW+
         dsigmaWplusH_prefac = m['W']*k_W/(constWH*s_hat**1.5)*g**2*2
         dsigmaWplusH[tuple()] += dsigmaWplusH_prefac*(
-              ux1*   dbarx2*np.conjugate(dtau[lam1][-1])*np.conjugate(M_lambda_udbar[lam1][tuple()])*M_lambda_udbar[lam2][tuple()]*dtau[lam2][-1]
-            + dbarx1*ux2*   np.conjugate(dtau[lam1][-1])*np.conjugate(M_lambda_dbaru[lam1][tuple()])*M_lambda_dbaru[lam2][tuple()]*dtau[lam2][-1]
+              ux1*dbarx2*np.conjugate(dtau[lam1][-1])*np.conjugate(M_lambda_udbar[lam1][tuple()])*M_lambda_udbar[lam2][tuple()]*dtau[lam2][-1]
+            + dbarx1*ux2*np.conjugate(dtau[lam1][-1])*np.conjugate(M_lambda_dbaru[lam1][tuple()])*M_lambda_dbaru[lam2][tuple()]*dtau[lam2][-1]
         )
         for der in first_derivatives:
             dsigmaWplusH[der] += dsigmaWplusH_prefac*(
-                  ux1*   dbarx2*np.conjugate(dtau[lam1][-1])*(np.conjugate(M_lambda_udbar[lam1][der])*M_lambda_udbar[lam2][tuple()]+np.conjugate(M_lambda_udbar[lam1][tuple()])*M_lambda_udbar[lam2][der])*dtau[lam2][-1]
-                + dbarx1*ux2*   np.conjugate(dtau[lam1][-1])*(np.conjugate(M_lambda_dbaru[lam1][der])*M_lambda_dbaru[lam2][tuple()]+np.conjugate(M_lambda_dbaru[lam1][tuple()])*M_lambda_dbaru[lam2][der])*dtau[lam2][-1]
+                  ux1*dbarx2*np.conjugate(dtau[lam1][-1])*(np.conjugate(M_lambda_udbar[lam1][der])*M_lambda_udbar[lam2][tuple()]\
+                                                         + np.conjugate(M_lambda_udbar[lam1][tuple()])*M_lambda_udbar[lam2][der])*dtau[lam2][-1]
+                + dbarx1*ux2*np.conjugate(dtau[lam1][-1])*(np.conjugate(M_lambda_dbaru[lam1][der])*M_lambda_dbaru[lam2][tuple()]\
+                                                         + np.conjugate(M_lambda_dbaru[lam1][tuple()])*M_lambda_dbaru[lam2][der])*dtau[lam2][-1]
             )
         for der in second_derivatives:
             dsigmaWplusH[der] += dsigmaWplusH_prefac*(
-                  ux1*   dbarx2*np.conjugate(dtau[lam1][-1])*(np.conjugate(M_lambda_udbar[lam1][(der[0],)])*M_lambda_udbar[lam2][(der[1],)]+np.conjugate(M_lambda_udbar[lam1][(der[1],)])*M_lambda_udbar[lam2][(der[0],)])*dtau[lam2][-1]
-                + dbarx1*ux2*   np.conjugate(dtau[lam1][-1])*(np.conjugate(M_lambda_dbaru[lam1][(der[0],)])*M_lambda_dbaru[lam2][(der[1],)]+np.conjugate(M_lambda_dbaru[lam1][(der[1],)])*M_lambda_dbaru[lam2][(der[0],)])*dtau[lam2][-1]
+                  ux1*dbarx2*np.conjugate(dtau[lam1][-1])*(np.conjugate(M_lambda_udbar[lam1][(der[0],)])*M_lambda_udbar[lam2][(der[1],)]
+                                                         + np.conjugate(M_lambda_udbar[lam1][(der[1],)])*M_lambda_udbar[lam2][(der[0],)])*dtau[lam2][-1]
+                + dbarx1*ux2*np.conjugate(dtau[lam1][-1])*(np.conjugate(M_lambda_dbaru[lam1][(der[0],)])*M_lambda_dbaru[lam2][(der[1],)]
+                                                         + np.conjugate(M_lambda_dbaru[lam1][(der[1],)])*M_lambda_dbaru[lam2][(der[0],)])*dtau[lam2][-1]
             )
-
+        # pp->HW-
         dsigmaWminusH_prefac = m['W']*k_W/(constWH*s_hat**1.5)*g**2*2
         dsigmaWminusH[tuple()] += dsigmaWminusH_prefac*(
-              dx1*   ubarx2*np.conjugate(dtau[lam1][-1])*np.conjugate(M_lambda_dubar[lam1][tuple()])*M_lambda_dubar[lam2][tuple()]*dtau[lam2][-1]
-            + ubarx1*dx2*   np.conjugate(dtau[lam1][-1])*np.conjugate(M_lambda_ubard[lam1][tuple()])*M_lambda_ubard[lam2][tuple()]*dtau[lam2][-1]
+              dx1*ubarx2*np.conjugate(dtau[lam1][-1])*np.conjugate(M_lambda_dubar[lam1][tuple()])*M_lambda_dubar[lam2][tuple()]*dtau[lam2][-1]
+            + ubarx1*dx2*np.conjugate(dtau[lam1][-1])*np.conjugate(M_lambda_ubard[lam1][tuple()])*M_lambda_ubard[lam2][tuple()]*dtau[lam2][-1]
         )
         for der in first_derivatives:
             dsigmaWminusH[der] += dsigmaWminusH_prefac*(
-                  dx1*   ubarx2*np.conjugate(dtau[lam1][-1])*(np.conjugate(M_lambda_dubar[lam1][der])*M_lambda_dubar[lam2][tuple()]+np.conjugate(M_lambda_dubar[lam1][tuple()])*M_lambda_dubar[lam2][der])*dtau[lam2][-1]
-                + ubarx1*dx2*   np.conjugate(dtau[lam1][-1])*(np.conjugate(M_lambda_ubard[lam1][der])*M_lambda_ubard[lam2][tuple()]+np.conjugate(M_lambda_ubard[lam1][tuple()])*M_lambda_ubard[lam2][der])*dtau[lam2][-1]
+                  dx1*ubarx2*np.conjugate(dtau[lam1][-1])*(np.conjugate(M_lambda_dubar[lam1][der])*M_lambda_dubar[lam2][tuple()]
+                                                         + np.conjugate(M_lambda_dubar[lam1][tuple()])*M_lambda_dubar[lam2][der])*dtau[lam2][-1]
+                + ubarx1*dx2*np.conjugate(dtau[lam1][-1])*(np.conjugate(M_lambda_ubard[lam1][der])*M_lambda_ubard[lam2][tuple()]
+                                                         + np.conjugate(M_lambda_ubard[lam1][tuple()])*M_lambda_ubard[lam2][der])*dtau[lam2][-1]
             )
         for der in second_derivatives:
             dsigmaWminusH[der] += dsigmaWminusH_prefac*(
-                  dx1*   ubarx2*np.conjugate(dtau[lam1][-1])*(np.conjugate(M_lambda_dubar[lam1][(der[0],)])*M_lambda_dubar[lam2][(der[1],)]+np.conjugate(M_lambda_dubar[lam1][(der[1],)])*M_lambda_dubar[lam2][(der[0],)])*dtau[lam2][-1]
-                + ubarx1*dx2*   np.conjugate(dtau[lam1][-1])*(np.conjugate(M_lambda_ubard[lam1][(der[0],)])*M_lambda_ubard[lam2][(der[1],)]+np.conjugate(M_lambda_ubard[lam1][(der[1],)])*M_lambda_ubard[lam2][(der[0],)])*dtau[lam2][-1]
+                  dx1*ubarx2*np.conjugate(dtau[lam1][-1])*(np.conjugate(M_lambda_dubar[lam1][(der[0],)])*M_lambda_dubar[lam2][(der[1],)]
+                                                         + np.conjugate(M_lambda_dubar[lam1][(der[1],)])*M_lambda_dubar[lam2][(der[0],)])*dtau[lam2][-1]
+                + ubarx1*dx2*np.conjugate(dtau[lam1][-1])*(np.conjugate(M_lambda_ubard[lam1][(der[0],)])*M_lambda_ubard[lam2][(der[1],)]
+                                                         + np.conjugate(M_lambda_ubard[lam1][(der[1],)])*M_lambda_ubard[lam2][(der[0],)])*dtau[lam2][-1]
             )
 
 # Check(ed) that residual imaginary parts are tiny
