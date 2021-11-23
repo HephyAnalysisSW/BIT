@@ -10,6 +10,7 @@ default_cfg = {
     "max_uncertainty": -1,
     "split_method":"vectorized_split_and_weight_sums",
     "max_n_split": -1,
+    "positive_score": False,
 }
 
 class Node:
@@ -52,8 +53,12 @@ class Node:
         sum_      = sum(self.training_weights[group])
 
         if sum_==0.: return 0
-
-        return sum_diff_/sum_
+        if self.positive_score:
+            #if sum_diff_/sum_<0:
+            #    print "Clipped!", sum_diff_/sum_
+            return max(0, sum_diff_/sum_)
+        else:
+            return  sum_diff_/sum_
 
     # compute the total FI from a set of booleans defining the 'left' box and (by negation) the 'right' box
     def FI_from_group( self, group):
@@ -209,12 +214,20 @@ class Node:
             fisher_information_left  = np.divide(sorted_diff_weight_sums**2, sorted_weight_sums, out=np.zeros_like(sorted_diff_weight_sums), where=sorted_weight_sums!=0) 
 
             sorted_diff_weight_sums_right = total_diff_weight_sum-sorted_diff_weight_sums
-            sorted_weight_sums_right = total_weight_sum-sorted_weight_sums
-            #fisher_information_right = sorted_diff_weight_sums_right**2/sorted_weight_sums_right
-            fisher_information_right  = np.divide(sorted_diff_weight_sums_right**2, sorted_weight_sums_right, out=np.zeros_like(sorted_diff_weight_sums_right), where=sorted_weight_sums_right!=0) 
+            sorted_weight_sums_right      = total_weight_sum-sorted_weight_sums
+            #fisher_information_right      = sorted_diff_weight_sums_right**2/sorted_weight_sums_right
+            fisher_information_right      = np.divide(sorted_diff_weight_sums_right**2, sorted_weight_sums_right, out=np.zeros_like(sorted_diff_weight_sums_right), where=sorted_weight_sums_right!=0) 
+
+            # If we insist that the score in each node is positive, we do not count the information in nodes with negative score
+            if self.positive_score: 
+                plateau_and_split_range_mask &= ( np.divide(sorted_diff_weight_sums,       sorted_weight_sums,       out=np.zeros_like(sorted_weight_sums),       where=sorted_weight_sums!=0) > 0 )
+                plateau_and_split_range_mask &= ( np.divide(sorted_diff_weight_sums_right, sorted_weight_sums_right, out=np.zeros_like(sorted_weight_sums_right), where=sorted_weight_sums_right!=0) > 0 )
+
+                #fisher_information_left [np.divide(sorted_diff_weight_sums,       sorted_weight_sums,       out=np.zeros_like(sorted_weight_sums),       where=sorted_weight_sums!=0) < 0] = 0
+                #fisher_information_right[np.divide(sorted_diff_weight_sums_right, sorted_weight_sums_right, out=np.zeros_like(sorted_weight_sums_right), where=sorted_weight_sums_right!=0) < 0] = 0
 
             fisher_gains = fisher_information_left + fisher_information_right
-            
+                
             if self.max_uncertainty>0:
                 #relative_information_variance_left  = 4.*variance_lambda_left/sorted_weight_sums**2 + variance_diff_lambda_left/sorted_diff_weight_sums**2
                 #relative_information_variance_right = 4.*variance_lambda_right/(total_weight_sum-sorted_weight_sums)**2 + variance_diff_lambda_right/(total_diff_weight_sum-sorted_diff_weight_sums)**2
