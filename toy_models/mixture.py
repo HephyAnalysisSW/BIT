@@ -233,9 +233,9 @@ class QuadraticMixturePDF:
 
 
 if __name__=="__main__":
-    support    = [1,5]
-    pdf        = Pow1D 
-    parameters = [(2,),(1.5,)]
+    support    = [0,5]
+    pdf        = Exp1D 
+    parameters = [(1.,),(.5,)]
     theta_ref  = [0]
     theta      = [0]
 
@@ -251,10 +251,10 @@ if __name__=="__main__":
 #    theta_ref  = [0,0]
 #    theta      = [0,0]
 
+    Nevents = 10**4
+
     mixturePDF = QuadraticMixturePDF( pdf, parameters, support )
 
-    features = mixturePDF.getEvents(20, theta_ref = theta_ref)
-
+    features = mixturePDF.getEvents(Nevents, theta_ref = theta_ref)
     weights  = mixturePDF.getWeights( features, theta = theta, theta_ref = theta_ref)
     #numerators, denominators = mixturePDF.getWeights( features, theta = [-1], theta_ref = theta_ref, only_weights=True)
-
