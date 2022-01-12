@@ -3,7 +3,7 @@ import numpy as np
 import random
 
 from math import sin, cos, sqrt, pi
-'''Implement the model from https://arxiv.org/pdf/1912.07628.pdf
+'''Implement the model from https://arxiv.org/pdf/1706.01816.pdf 
 '''
 
 import ROOT
@@ -64,6 +64,8 @@ Qq  = {1:-1./3., 2: 2./3.}
 T3q = {1:-.5,    2:.5}
 
 def ac_basis(**kwargs):
+    ''' Eq. 2.3 of https://arxiv.org/pdf/1706.01816.pdf
+    '''
     ac_basis = ['aZ', 'bZ', 'cZ', 'bZtilde', 'bgamma', 'cgamma', 'bgammatilde', 'aW', 'bW', 'cW', 'bWtilde']
     default_ac_parameters = { }#'Lambda':1000 }
     default_ac_parameters.update( {var:0. for var in ac_basis} )
@@ -104,13 +106,9 @@ def make_eft(**kwargs):
 random_eft = make_eft(**{v:random.random() for v in wilson_coefficients} )
 sm         = make_eft()
 
-assert False, ""
+#pp -> WH
+def get_events(N_events):
 
-# qq -> ZH
-feature_names_ZH =  ['sqrt_s_hat', 'y', 'cos_theta', 'phi_hat', 'cos_theta_hat', 
-                    'fLL', 'f1TT', 'f2TT' , 'f1LT', 'f2LT', 'f1tildeLT', 'f2tildeLT', 'fTTprime', 'ftildeTTprime']
-
-def get_ZH_events(N_events=10):
     # theta of boson in the qq restframe
     cos_theta = np.random.uniform(-1,1,N_events)
 
@@ -118,14 +116,17 @@ def get_ZH_events(N_events=10):
     cos_theta_hat = np.random.uniform(-1,1,N_events)
 
     # kinematics
-    s_hat_min   = (m['H'] + m['Z'])**2
+    s_hat_min   = (m['H'] + m['W'])**2
     s_hat       = s_hat_min+(s_hat_max-s_hat_min)*np.random.uniform(0, s_hat_clip, N_events)
     sqrt_s_hat  = np.sqrt(s_hat)
 
-    x_min       = sqrt_s_hat/np.sqrt( s_hat_max )
+    x_min       = np.sqrt( s_hat/s_hat_max )
     abs_y_max   = - np.log(x_min)
     y           = np.random.uniform(-1,1, N_events)*abs_y_max
 
+    lepton_charge = np.random.choice([-1,1], N_events)
+
+    # Eq. 3.6 of Spannowsky (https://arxiv.org/pdf/1912.07628.pdf)
     C2_theta     =  cos_theta**2  
     C2_theta_hat =  cos_theta_hat**2  
 
@@ -148,174 +149,16 @@ def get_ZH_events(N_events=10):
     fTTprime    = C_2phi_hat*fLL
     ftildeTTprime=S_2phi_hat*fLL
 
-    return np.transpose(np.array( [sqrt_s_hat, y, cos_theta, phi_hat, cos_theta_hat, fLL, f1TT, f2TT, f1LT, f2LT, f1tildeLT, f2tildeLT, fTTprime, ftildeTTprime]))
+    return np.transpose(np.array( [sqrt_s_hat, y, cos_theta, phi_hat, cos_theta_hat, lepton_charge, fLL, f1TT, f2TT, f1LT, f2LT, f1tildeLT, f2tildeLT, fTTprime, ftildeTTprime]))
 
-def get_ZH_weights( features, eft):
+def get_weights(features, eft):
 
-    sqrt_s_hat    = features[:,feature_names_ZH.index('sqrt_s_hat')]
-    y             = features[:,feature_names_ZH.index('y')]
-    cos_theta     = features[:,feature_names_ZH.index('cos_theta')]
-    phi_hat       = features[:,feature_names_ZH.index('phi_hat')]
-    cos_theta_hat = features[:,feature_names_ZH.index('cos_theta_hat')]
-
-    s_hat         = sqrt_s_hat**2
-    sin_theta     = np.sqrt( 1. - cos_theta**2 ) 
-    sin_theta_hat = np.sqrt( 1. - cos_theta_hat**2 ) 
-
-    w_Z           = (s_hat + m['Z']**2-m['H']**2)/(2*np.sqrt(s_hat))
-    k_Z           = np.sqrt( w_Z**2-m['Z']**2 )
-
-    x1          = sqrt_s_hat/E_LHC*np.exp(y)
-    x2          = sqrt_s_hat/E_LHC*np.exp(-y)
-
-    Cf  = 1.
-    #gZsigma[sigma_quark][pdg_quark]
-    gZsigma = {1:{1: gZ*(-Qq[1]*s2w), 2: gZ*(-Qq[2]*s2w)}, -1:{1:gZ*(T3q[1]-Qq[1]*s2w), 2:gZ*(T3q[2]-Qq[2]*s2w)}}
-
-    gZtaull = {1:gZ*s2w, -1:gZ*(-0.5+s2w) }
-
-    first_derivatives = [
-            ('h1Z',), ('h2Z',), ('h3Z',), ('h4Ztilde',), 
-            ('h1gamma',), ('h2gamma',), ('h3gamma',), ('h4gammatilde',), 
-    ]
-    second_derivatives= [ ('h1Z','h1Z'), ('h2Z','h2Z'), ('h3Z', 'h3Z'), ('h4Ztilde', 'h4Ztilde'),\
-                          ('h1gamma','h1gamma'), ('h2gamma','h2gamma'), ('h3gamma', 'h3gamma'), ('h4gammatilde', 'h4gammatilde'),\
-                          ('h1Z','h2Z'),  ('h1Z','h3Z'), ('h1Z', 'h4Ztilde'), ('h1Z', 'h1gamma'), ('h1Z', 'h2gamma'), ('h1Z', 'h3gamma'), ('h1Z', 'h4gammatilde'),\
-                          ('h2Z', 'h3Z'), ('h2Z', 'h4Ztilde'), ('h2Z', 'h1gamma'), ('h2Z', 'h2gamma'), ('h2Z', 'h3gamma'), ('h2Z', 'h4gammatilde'),\
-                          ('h3Z', 'h4Ztilde'), ('h3Z', 'h1gamma'), ('h3Z', 'h2gamma'), ('h3Z', 'h3gamma'), ('h3Z', 'h4gammatilde'),\
-                          ('h4Ztilde', 'h1gamma'), ('h4Ztilde', 'h2gamma'), ('h4Ztilde', 'h3gamma'), ('h4Ztilde', 'h4gammatilde'),\
-                          ('h1gamma', 'h2gamma'), ('h1gamma', 'h3gamma'), ('h1gamma', 'h4gammatilde'),\
-                          ('h2gamma', 'h3gamma'), ('h2gamma', 'h4gammatilde'),\
-                          ('h3gamma', 'h4gammatilde'),\
-    ]
-
-    derivatives   = [ tuple() ] + first_derivatives + second_derivatives
-
-    #constZH = 12288*pi**3*Gamma['Z']*E_LHC**2
-    constZH   = 1 
-    N_events  = len(features)
-    dsigmaZH  = {der:np.zeros(N_events).astype('complex128') for der in derivatives}
-
-    for pdg_quark in [1, 2]:
-        qx1     = np.array( [ pdf( x,  pdg_quark ) for x in x1 ] ) 
-        qbarx2  = np.array( [ pdf( x, -pdg_quark ) for x in x2 ] ) 
-
-        qbarx1  = np.array( [ pdf( x, -pdg_quark ) for x in x1 ] ) 
-        qx2     = np.array( [ pdf( x,  pdg_quark ) for x in x2 ] ) 
-        for sigma_quark in [+1, -1]:
-            dtau = {}
-            M_lambda_sigma_qbarq = {}
-            M_lambda_sigma_qqbar = {}
-            for lambda_boson in [+1, -1, 0]:
-                if abs(lambda_boson)==1:
-
-                    prefac   = gZ*m['Z']*sqrt_s_hat
-                    prefac_1 = prefac * gZsigma[sigma_quark][pdg_quark] / (s_hat - m['Z']**2)
-                    prefac_2 = prefac * Qq[pdg_quark]*e/s_hat
-                    Mhat = {tuple():            prefac_1*(1.+eft['h1Z']+eft['h2Z']*s_hat/m['Z']**2+1j*lambda_boson*eft['h4Ztilde']*k_Z*sqrt_s_hat/m['Z']**2)\
-                                               +prefac_2*(eft['h1gamma']+eft['h2gamma']*s_hat/m['Z']**2+1j*lambda_boson*eft['h4gammatilde']*k_Z*sqrt_s_hat/m['Z']**2),
-                            ('h1Z',):           prefac_1,
-                            ('h2Z',):           prefac_1*s_hat/m['Z']**2,
-                            ('h3Z',):           np.zeros(N_events),
-                            ('h4Ztilde',):      prefac_1*1j*lambda_boson*k_Z*sqrt_s_hat/m['Z']**2,
-                            ('h1gamma',):       prefac_2,
-                            ('h2gamma',):       prefac_2*s_hat/m['Z']**2,
-                            ('h3gamma',):       np.zeros(N_events),
-                            ('h4gammatilde',):  prefac_2*1j*lambda_boson*k_Z*sqrt_s_hat/m['Z']**2,
-                            }
-                    M_lambda_sigma_qqbar[lambda_boson] = {k: sigma_quark*(1+sigma_quark*lambda_boson*cos_theta)/sqrt(2.)*Mhat[k] for k in Mhat.keys()} 
-                    M_lambda_sigma_qbarq[lambda_boson] = {k:-sigma_quark*(1-sigma_quark*lambda_boson*cos_theta)/sqrt(2.)*Mhat[k] for k in Mhat.keys()}
-                else:
-                    prefac   = sin_theta*(-gZ)*w_Z*sqrt_s_hat
-                    prefac_1 = prefac * gZsigma[sigma_quark][pdg_quark]/(s_hat - m['Z']**2)
-                    prefac_2 = prefac * Qq[pdg_quark]*e/s_hat
-                    M_lambda_sigma_qqbar[lambda_boson] = \
-                            {tuple():prefac_1*(1.+eft['h1Z']+eft['h2Z']*s_hat/m['Z']**2+eft['h3Z']*k_Z**2*sqrt_s_hat/(m['Z']**2*w_Z)) 
-                                   + prefac_2*(eft['h1gamma']+eft['h2gamma']*s_hat/m['Z']**2+eft['h3gamma']*k_Z**2*sqrt_s_hat/(m['Z']**2*w_Z)),
-                            ('h1Z',):           prefac_1,
-                            ('h2Z',):           prefac_1*s_hat/m['Z']**2,
-                            ('h3Z',):           prefac_1*k_Z**2*sqrt_s_hat/(m['Z']**2*w_Z),
-                            ('h4Ztilde',):      np.zeros(N_events),
-                            ('h1gamma',):       prefac_2,
-                            ('h2gamma',):       prefac_2*s_hat/m['Z']**2,
-                            ('h3gamma',):       k_Z**2*sqrt_s_hat/(m['Z']**2*w_Z),
-                            ('h4gammatilde',):  np.zeros(N_events),
-                            }
-                    M_lambda_sigma_qbarq[lambda_boson] = M_lambda_sigma_qqbar[lambda_boson]
-
-                dtau[lambda_boson] = {}
-                for tau in [+1, -1]:
-                    if abs(tau)==1:
-                        dtau[lambda_boson][tau] = tau*(1+lambda_boson*tau*cos_theta_hat)/sqrt(2.)*np.exp(1j*lambda_boson*phi_hat) 
-                    else:
-                        dtau[lambda_boson][tau] = sin_theta_hat 
-
-            for lam1 in [+1, -1, 0]:
-                for lam2 in [+1, -1, 0]:
-                    for tau in [+1, -1]:
-
-                        dsigmaZH_prefac = m['Z']*k_Z/(constZH*s_hat**1.5)*2*gZtaull[tau]**2*Cf
-                        qx1_qbarx2      = qx1*qbarx2
-                        qbarx1_qx2      = qbarx1*qx2 
-                        dsigmaZH[tuple()] += dsigmaZH_prefac*(
-                              qx1_qbarx2*np.conjugate(dtau[lam1][tau])*np.conjugate(M_lambda_sigma_qqbar[lam1][tuple()])*M_lambda_sigma_qqbar[lam2][tuple()]*dtau[lam2][tau]
-                            + qbarx1_qx2*np.conjugate(dtau[lam1][tau])*np.conjugate(M_lambda_sigma_qbarq[lam1][tuple()])*M_lambda_sigma_qbarq[lam2][tuple()]*dtau[lam2][tau]
-                        )
-                        for der in first_derivatives:
-                            dsigmaZH[der] += dsigmaZH_prefac*(
-                                 qx1_qbarx2*np.conjugate(dtau[lam1][tau])*(
-                                    np.conjugate(M_lambda_sigma_qqbar[lam1][der])*M_lambda_sigma_qqbar[lam2][tuple()]*dtau[lam2][tau]
-                                   +np.conjugate(M_lambda_sigma_qqbar[lam1][tuple()])*M_lambda_sigma_qqbar[lam2][der]*dtau[lam2][tau])
-                               + qbarx1_qx2*np.conjugate(dtau[lam1][tau])*(
-                                    np.conjugate(M_lambda_sigma_qbarq[lam1][der])*M_lambda_sigma_qbarq[lam2][tuple()]*dtau[lam2][tau]
-                                   +np.conjugate(M_lambda_sigma_qbarq[lam1][tuple()])*M_lambda_sigma_qbarq[lam2][der]*dtau[lam2][tau])
-                            )
-                        for der in second_derivatives:
-                            dsigmaZH[der] += dsigmaZH_prefac*(
-                                 qx1_qbarx2*np.conjugate(dtau[lam1][tau])*(
-                                    np.conjugate(M_lambda_sigma_qqbar[lam1][(der[0],)])*M_lambda_sigma_qqbar[lam2][(der[1],)]*dtau[lam2][tau]
-                                   +np.conjugate(M_lambda_sigma_qqbar[lam1][(der[1],)])*M_lambda_sigma_qqbar[lam2][(der[0],)]*dtau[lam2][tau])
-                               + qbarx1_qx2*np.conjugate(dtau[lam1][tau])*(
-                                    np.conjugate(M_lambda_sigma_qbarq[lam1][(der[0],)])*M_lambda_sigma_qbarq[lam2][(der[1],)]*dtau[lam2][tau]
-                                   +np.conjugate(M_lambda_sigma_qbarq[lam1][(der[1],)])*M_lambda_sigma_qbarq[lam2][(der[0],)]*dtau[lam2][tau])
-                            )
-    # Check(ed) that residual imaginary parts are tiny
-    dsigmaZH  = {k:np.real(dsigmaZH[k])  for k in derivatives}
-    return dsigmaZH
-
-
-feature_names_WH =  ['sqrt_s_hat', 'y', 'cos_theta', 'phi_hat', 'cos_theta_hat', 'lepton_charge']
-
-#pp -> WH
-def get_WH_events(N_events):
-
-    # theta of boson in the qq restframe
-    cos_theta = np.random.uniform(-1,1,N_events)
-
-    phi_hat = pi*np.random.uniform(-1,1,N_events)
-    cos_theta_hat = np.random.uniform(-1,1,N_events)
-
-    # kinematics
-    s_hat_min   = (m['H'] + m['W'])**2
-    s_hat       = s_hat_min+(s_hat_max-s_hat_min)*np.random.uniform(0, s_hat_clip, N_events)
-    sqrt_s_hat  = np.sqrt(s_hat)
-
-    x_min       = np.sqrt( s_hat/s_hat_max )
-    abs_y_max   = - np.log(x_min)
-    y           = np.random.uniform(-1,1, N_events)*abs_y_max
-
-    lepton_charge = np.random.choice([-1,1], N_events)
-
-    return np.transpose(np.array( [sqrt_s_hat, y, cos_theta, phi_hat, cos_theta_hat, lepton_charge]))
-
-def get_WH_weights(features, eft):
-
-    sqrt_s_hat    = features[:,feature_names_WH.index('sqrt_s_hat')]
-    y             = features[:,feature_names_WH.index('y')]
-    cos_theta     = features[:,feature_names_WH.index('cos_theta')]
-    phi_hat       = features[:,feature_names_WH.index('phi_hat')]
-    cos_theta_hat = features[:,feature_names_WH.index('cos_theta_hat')]
-    lepton_charge = features[:,feature_names_WH.index('lepton_charge')]
+    sqrt_s_hat    = features[:,feature_names.index('sqrt_s_hat')]
+    y             = features[:,feature_names.index('y')]
+    cos_theta     = features[:,feature_names.index('cos_theta')]
+    phi_hat       = features[:,feature_names.index('phi_hat')]
+    cos_theta_hat = features[:,feature_names.index('cos_theta_hat')]
+    lepton_charge = features[:,feature_names.index('lepton_charge')]
 
     is_plus       = lepton_charge==1
     s_hat         = sqrt_s_hat**2
@@ -395,7 +238,7 @@ def get_WH_weights(features, eft):
 
     dsigmaWH  = {der:np.zeros(N_events).astype('complex128') for der in derivatives}
 
-    dsigmaWH_prefac = m['W']*k_W/(constWH*s_hat**1.5)*g**2*2
+    dsigmaWH_prefac = m['W']*k_W/(constWH*s_hat**1.5)*g**2*2 #factor 2 from sum_{u,d} |V_{ud}|**2 = 2
     for lam1 in [+1, -1, 0]:
         for lam2 in [+1, -1, 0]:
             # pp->HW+
@@ -444,13 +287,6 @@ def get_WH_weights(features, eft):
     # Check(ed) that residual imaginary parts are tiny
     dsigmaWH  = {k:np.real(dsigmaWH[k])  for k in derivatives}
     return dsigmaWH
-
-    sqrt_s_hat    = features[:,feature_names_WH.index('sqrt_s_hat')]
-    y             = features[:,feature_names_WH.index('y')]
-    cos_theta     = features[:,feature_names_WH.index('cos_theta')]
-    phi_hat       = features[:,feature_names_WH.index('phi_hat')]
-    cos_theta_hat = features[:,feature_names_WH.index('cos_theta_hat')]
-    lepton_charge = features[:,feature_names_WH.index('lepton_charge')]
 
 Nbins = 50
 plot_options = {
