@@ -13,7 +13,7 @@ import array
 h_pdf = {} 
 for c_pdf in [ "u", "ubar", "d", "dbar", "s", "sbar", "c", "cbar", "b", "bbar", "gluon"]:
 
-    with open(os.path.expandvars("$CMSSW_BASE/src/BIT/toy_models/pdf_data/pdf_%s.txt"%c_pdf)) as f:
+    with open(os.path.expandvars("$CMSSW_BASE/src/BIT/VH_models/pdf_data/pdf_%s.txt"%c_pdf)) as f:
         reader = csv.reader(f)
         data = list(reader)
         thresholds = []
@@ -57,7 +57,7 @@ sqrt_2 = sqrt(2)
 
 E_LHC       = 13000
 s_hat_max   = E_LHC**2
-s_hat_clip  = 0.015
+s_hat_clip  = 0.03
 
 # Qq
 Qq  = {1:-1./3., 2: 2./3.}
@@ -67,6 +67,10 @@ T3q = {1:-.5,    2:.5}
 wilson_coefficients    = ['cHW', 'cHWtil', 'cHQ3']
 default_eft_parameters = { 'Lambda':1000. }
 default_eft_parameters.update( {var:0. for var in wilson_coefficients} )
+
+first_derivatives = [('cHQ3',), ('cHW',), ('cHWtil',)]
+second_derivatives= [('cHQ3','cHQ3'), ('cHW','cHW'), ('cHWtil', 'cHWtil'), ('cHQ3','cHW'), ('cHQ3','cHWtil'), ('cHW', 'cHWtil'), ]
+derivatives       = [tuple()] + first_derivatives + second_derivatives
 
 def make_eft(**kwargs):
     result = { key:val for key, val in default_eft_parameters.iteritems() }
@@ -80,22 +84,45 @@ def make_eft(**kwargs):
 random_eft = make_eft(**{v:random.random() for v in wilson_coefficients} )
 sm         = make_eft()
 
-feature_names =  ['sqrt_s_hat', 'y', 'cos_theta', 'phi_hat', 'cos_theta_hat', 'lepton_charge',
+feature_names =  ['sqrt_s_hat', 'pT', 'y', 'cos_theta', 'phi_hat', 'cos_theta_hat', 'lepton_charge',
                   'fLL', 'f1TT', 'f2TT' , 'f1LT', 'f2LT', 'f1tildeLT', 'f2tildeLT', 'fTTprime', 'ftildeTTprime']
 
-#pp -> WH
-def get_events(N_events):
+def make_s_cos_theta( N_events, pT_min = 300):
 
     # theta of boson in the qq restframe
     cos_theta = np.random.uniform(-1,1,N_events)
 
-    phi_hat = pi*np.random.uniform(-1,1,N_events)
-    cos_theta_hat = np.random.uniform(-1,1,N_events)
-
     # kinematics
-    s_hat_min   = (m['H'] + m['W'])**2
+    #s_hat_min   = (m['H'] + m['W'])**2
+    s_hat_min   = (2*pT_min)**2 #minimum s_hat for sin(theta)=1
     s_hat       = s_hat_min+(s_hat_max-s_hat_min)*np.random.uniform(0, s_hat_clip, N_events)
     sqrt_s_hat  = np.sqrt(s_hat)
+
+    pT          = 0.5*sqrt_s_hat*np.sqrt(1-cos_theta**2)      
+    
+    return s_hat, sqrt_s_hat, pT, cos_theta 
+
+#pp -> WH
+def getEvents(N_events_requested):
+
+    pT_min = 300
+
+    # correct efficiency of pt cut
+    _, _, pT, _ = make_s_cos_theta( N_events_requested, pT_min = pT_min)
+    N_events_corrected = int(round(N_events_requested/(np.count_nonzero(pT>pT_min)/float(N_events_requested))))
+
+    # simulate events and compensate pT efficiency
+    s_hat, sqrt_s_hat, pT, cos_theta = make_s_cos_theta( N_events_corrected, pT_min = pT_min)
+
+    # apply selection 
+    sel = pT>pT_min
+    s_hat, sqrt_s_hat, pT, cos_theta = s_hat[sel], sqrt_s_hat[sel], pT[sel], cos_theta[sel]
+    N_events = len(s_hat) 
+    # remind myself
+    print("Requested %i events. Simulated %i events and %i survive pT_min cut of %i." %( N_events_requested, N_events_corrected, N_events, pT_min ) ) 
+
+    phi_hat = pi*np.random.uniform(-1,1,N_events)
+    cos_theta_hat = np.random.uniform(-1,1,N_events)
 
     x_min       = np.sqrt( s_hat/s_hat_max )
     abs_y_max   = - np.log(x_min)
@@ -126,9 +153,9 @@ def get_events(N_events):
     fTTprime    = C_2phi_hat*fLL
     ftildeTTprime=S_2phi_hat*fLL
 
-    return np.transpose(np.array( [sqrt_s_hat, y, cos_theta, phi_hat, cos_theta_hat, lepton_charge, fLL, f1TT, f2TT, f1LT, f2LT, f1tildeLT, f2tildeLT, fTTprime, ftildeTTprime]))
+    return np.transpose(np.array( [sqrt_s_hat, pT, y, cos_theta, phi_hat, cos_theta_hat, lepton_charge, fLL, f1TT, f2TT, f1LT, f2LT, f1tildeLT, f2tildeLT, fTTprime, ftildeTTprime]))
 
-def get_weights(features, eft):
+def getWeights(features, eft):
 
     sqrt_s_hat    = features[:,feature_names.index('sqrt_s_hat')]
     y             = features[:,feature_names.index('y')]
@@ -152,17 +179,16 @@ def get_weights(features, eft):
     #constWH = 8192*pi**3*Gamma['W']*E_LHC**2
 
     N_events= len(features)
-    dsigmaWH= np.zeros(N_events).astype('complex128')
 
-    ux1     = np.array( [ pdf( x,  1 ) for x in x1 ] ) 
-    ubarx1  = np.array( [ pdf( x, -1 ) for x in x1 ] ) 
-    ux2     = np.array( [ pdf( x,  1 ) for x in x2 ] ) 
-    ubarx2  = np.array( [ pdf( x, -1 ) for x in x2 ] ) 
+    ux1     = np.array( [ pdf( x,  2 ) for x in x1 ] ) 
+    ubarx1  = np.array( [ pdf( x, -2 ) for x in x1 ] ) 
+    ux2     = np.array( [ pdf( x,  2 ) for x in x2 ] ) 
+    ubarx2  = np.array( [ pdf( x, -2 ) for x in x2 ] ) 
 
-    dx1     = np.array( [ pdf( x,  2 ) for x in x1 ] ) 
-    dbarx1  = np.array( [ pdf( x, -2 ) for x in x1 ] ) 
-    dx2     = np.array( [ pdf( x,  2 ) for x in x2 ] ) 
-    dbarx2  = np.array( [ pdf( x, -2 ) for x in x2 ] ) 
+    dx1     = np.array( [ pdf( x,  1 ) for x in x1 ] ) 
+    dbarx1  = np.array( [ pdf( x, -1 ) for x in x1 ] ) 
+    dx2     = np.array( [ pdf( x,  1 ) for x in x2 ] ) 
+    dbarx2  = np.array( [ pdf( x, -1 ) for x in x2 ] ) 
 
     dtau = {}
     M_lambda_udbar = {}
@@ -172,10 +198,10 @@ def get_weights(features, eft):
     for lambda_boson in [+1, -1, 0]:
         if abs(lambda_boson)==1:
             prefac = g**2/sqrt_2*m['W']/sqrt_s_hat 
-            M    = {tuple()   :     prefac*(1.+s_hat/m['W']**2*v**2/eft['Lambda']**2*(eft['cHQ3'] + eft['cHW'] - 1j*eft['cHWtil'])),
+            M    = {tuple()   :     prefac*(1.+s_hat/m['W']**2*v**2/eft['Lambda']**2*(eft['cHQ3'] + eft['cHW'] - 1j*lambda_boson*eft['cHWtil'])),
                    ('cHQ3',)  :     prefac*s_hat/m['W']**2*v**2/eft['Lambda']**2,
                    ('cHW',)   :     prefac*s_hat/m['W']**2*v**2/eft['Lambda']**2,
-                   ('cHWtil',): -1j*prefac*s_hat/m['W']**2*v**2/eft['Lambda']**2,
+                   ('cHWtil',): -1j*lambda_boson*prefac*s_hat/m['W']**2*v**2/eft['Lambda']**2,
                    }
 
             M_lambda_udbar[lambda_boson] =  { k: - (1-lambda_boson*cos_theta)/sqrt(2.)*M[k] for k in M.keys()}
@@ -203,11 +229,6 @@ def get_weights(features, eft):
                 dtau[lambda_boson][tau] = tau*(1+lambda_boson*tau*cos_theta_hat)/sqrt(2.)*np.exp(1j*lambda_boson*phi_hat) 
             else:
                 dtau[lambda_boson][tau] = sin_theta_hat 
-
-
-    first_derivatives = [('cHQ3',), ('cHW',), ('cHWtil',)]
-    second_derivatives= [('cHQ3','cHQ3'), ('cHW','cHW'), ('cHWtil', 'cHWtil'), ('cHQ3','cHW'), ('cHQ3','cHWtil'), ('cHW', 'cHWtil'), ]
-    derivatives   = [tuple()] + first_derivatives + second_derivatives
 
     dsigmaWH  = {der:np.zeros(N_events).astype('complex128') for der in derivatives}
 
@@ -264,11 +285,12 @@ def get_weights(features, eft):
 Nbins = 50
 plot_options = {
     'sqrt_s_hat': {'binning':[Nbins,200,3000],      'tex':"#sqrt{#hat{s}}",},
+    'pT':         {'binning':[Nbins,200,1000],      'tex':"p_{T}",},
     'y':          {'binning':[Nbins,-4,4],          'tex':"y",},
     'cos_theta':  {'binning':[Nbins,-1,1],          'tex':"cos(#theta)",},
     'cos_theta_hat': {'binning':[Nbins,-1,1],       'tex':"cos(#hat{#theta})",},
     'phi_hat':    {'binning':[Nbins,-pi,pi],        'tex':"#hat{#phi}",},
-    'lep_charge': {'binning':[3,-1,2],              'tex':"charge(l_{W})",},
+    'lepton_charge': {'binning':[3,-1,2],              'tex':"charge(l_{W})",},
     'fLL'         : {'binning':[Nbins,0,1],        'tex':'f_{LL}'          ,},
     'f1TT'        : {'binning':[Nbins,-1,1],        'tex':'f_{1TT}'         ,},
     'f2TT'        : {'binning':[Nbins, 0,4],        'tex':'f_{2TT}'         ,},
@@ -278,4 +300,38 @@ plot_options = {
     'f2tildeLT'   : {'binning':[Nbins,-1,1],        'tex':'#tilde{f}_{2LT}' ,},
     'fTTprime'    : {'binning':[Nbins,-1,1],        'tex':'f_{TT}'     ,},
     'ftildeTTprime':{'binning':[Nbins,-1,1],        'tex':'#tilde{f}_{TT}',},
-    } 
+    }
+
+eft_plot_points = [ 
+    {'color':ROOT.kBlack, 'eft':sm, 'tex':"SM"},
+    {'color':ROOT.kBlue+2,  'eft':make_eft(cHQ3=.1),  'tex':"c_{HQ}^{(3)}=0.1"},
+    {'color':ROOT.kBlue-4,  'eft':make_eft(cHQ3=-.1), 'tex':"c_{HQ}^{(3)}=-0.1"},
+    {'color':ROOT.kGreen+2,  'eft':make_eft(cHW=1),   'tex':"c_{HW}=1"},
+    {'color':ROOT.kGreen-4,  'eft':make_eft(cHW=-1),  'tex':"c_{HW}=-1"},
+    {'color':ROOT.kMagenta+2,  'eft':make_eft(cHWtil=1),   'tex':"c_{H#tilde{W}}=1"},
+    {'color':ROOT.kMagenta-4,  'eft':make_eft(cHWtil=-1),  'tex':"c_{H#tilde{W}}=-1"},
+]
+
+bit_cfg = {der: {'n_trees': 250,
+                 'max_depth': 4,
+                 'learning_rate': 0.20,
+                 'min_size': 30,} for der in derivatives if der!=tuple() }
+bit_cfg[('cHQ3',)]['n_trees'] = 80
+bit_cfg[('cHQ3','cHQ3')]['n_trees'] = 80
+
+def load(directory = '/groups/hephy/cms/robert.schoefbeck/BIT/models/', prefix = 'bit_WH_Spannowsky_nTraining_2000000', derivatives=derivatives):
+    import sys, os
+    sys.path.insert(0,os.path.expandvars("$CMSSW_BASE/src/BIT"))
+    from BoostedInformationTree import BoostedInformationTree
+    bits = {}
+    for derivative in derivatives:
+        if derivative == tuple(): continue
+
+        filename = os.path.expandvars(os.path.join(directory, "%s_derivative_%s"% (prefix, '_'.join(derivative))) + '.pkl')
+        try:
+            print ("Loading %s for %r"%( filename, derivative))
+            bits[derivative] = BoostedInformationTree.load(filename)
+        except IOError:
+            print ("Could not load %s for %r"%( filename, derivative))
+
+    return bits 

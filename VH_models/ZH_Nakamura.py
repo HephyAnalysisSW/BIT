@@ -13,7 +13,7 @@ import array
 h_pdf = {} 
 for c_pdf in [ "u", "ubar", "d", "dbar", "s", "sbar", "c", "cbar", "b", "bbar", "gluon"]:
 
-    with open(os.path.expandvars("$CMSSW_BASE/src/BIT/toy_models/pdf_data/pdf_%s.txt"%c_pdf)) as f:
+    with open(os.path.expandvars("$CMSSW_BASE/src/BIT/VH_models/pdf_data/pdf_%s.txt"%c_pdf)) as f:
         reader = csv.reader(f)
         data = list(reader)
         thresholds = []
@@ -110,7 +110,7 @@ sm         = make_eft()
 feature_names =  ['sqrt_s_hat', 'y', 'cos_theta', 'phi_hat', 'cos_theta_hat', 
                   'fLL', 'f1TT', 'f2TT' , 'f1LT', 'f2LT', 'f1tildeLT', 'f2tildeLT', 'fTTprime', 'ftildeTTprime']
 
-def get_events(N_events=10):
+def getEvents(N_events=10):
     # theta of boson in the qq restframe
     cos_theta = np.random.uniform(-1,1,N_events)
 
@@ -151,7 +151,7 @@ def get_events(N_events=10):
 
     return np.transpose(np.array( [sqrt_s_hat, y, cos_theta, phi_hat, cos_theta_hat, fLL, f1TT, f2TT, f1LT, f2LT, f1tildeLT, f2tildeLT, fTTprime, ftildeTTprime]))
 
-def get_weights( features, eft):
+def getWeights( features, eft):
 
     sqrt_s_hat    = features[:,feature_names.index('sqrt_s_hat')]
     y             = features[:,feature_names.index('y')]

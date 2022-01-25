@@ -13,7 +13,7 @@ import array
 h_pdf = {} 
 for c_pdf in [ "u", "ubar", "d", "dbar", "s", "sbar", "c", "cbar", "b", "bbar", "gluon"]:
 
-    with open(os.path.expandvars("$CMSSW_BASE/src/BIT/toy_models/pdf_data/pdf_%s.txt"%c_pdf)) as f:
+    with open(os.path.expandvars("$CMSSW_BASE/src/BIT/VH_models/pdf_data/pdf_%s.txt"%c_pdf)) as f:
         reader = csv.reader(f)
         data = list(reader)
         thresholds = []
@@ -107,7 +107,7 @@ random_eft = make_eft(**{v:random.random() for v in wilson_coefficients} )
 sm         = make_eft()
 
 #pp -> WH
-def get_events(N_events):
+def getEvents(N_events):
 
     # theta of boson in the qq restframe
     cos_theta = np.random.uniform(-1,1,N_events)
@@ -136,8 +136,8 @@ def get_events(N_events):
     S_theta_hat = np.sqrt(S2_theta_hat) 
     C_phi_hat   = np.cos(phi_hat)
     S_phi_hat   = np.sin(phi_hat)
-    C_2phi_hat   = np.cos(2*phi_hat)
-    S_2phi_hat   = np.sin(2*phi_hat)
+    C_2phi_hat  = np.cos(2*phi_hat)
+    S_2phi_hat  = np.sin(2*phi_hat)
 
     fLL         = S2_theta*S2_theta_hat
     f1TT        = cos_theta*cos_theta_hat
@@ -151,7 +151,7 @@ def get_events(N_events):
 
     return np.transpose(np.array( [sqrt_s_hat, y, cos_theta, phi_hat, cos_theta_hat, lepton_charge, fLL, f1TT, f2TT, f1LT, f2LT, f1tildeLT, f2tildeLT, fTTprime, ftildeTTprime]))
 
-def get_weights(features, eft):
+def getWeights(features, eft):
 
     sqrt_s_hat    = features[:,feature_names.index('sqrt_s_hat')]
     y             = features[:,feature_names.index('y')]
@@ -178,15 +178,15 @@ def get_weights(features, eft):
     N_events= len(features)
     dsigmaWH= np.zeros(N_events).astype('complex128')
 
-    ux1     = np.array( [ pdf( x,  1 ) for x in x1 ] ) 
-    ubarx1  = np.array( [ pdf( x, -1 ) for x in x1 ] ) 
-    ux2     = np.array( [ pdf( x,  1 ) for x in x2 ] ) 
-    ubarx2  = np.array( [ pdf( x, -1 ) for x in x2 ] ) 
+    ux1     = np.array( [ pdf( x,  2 ) for x in x1 ] ) 
+    ubarx1  = np.array( [ pdf( x, -2 ) for x in x1 ] ) 
+    ux2     = np.array( [ pdf( x,  2 ) for x in x2 ] ) 
+    ubarx2  = np.array( [ pdf( x, -2 ) for x in x2 ] ) 
 
-    dx1     = np.array( [ pdf( x,  2 ) for x in x1 ] ) 
-    dbarx1  = np.array( [ pdf( x, -2 ) for x in x1 ] ) 
-    dx2     = np.array( [ pdf( x,  2 ) for x in x2 ] ) 
-    dbarx2  = np.array( [ pdf( x, -2 ) for x in x2 ] ) 
+    dx1     = np.array( [ pdf( x,  1 ) for x in x1 ] ) 
+    dbarx1  = np.array( [ pdf( x, -1 ) for x in x1 ] ) 
+    dx2     = np.array( [ pdf( x,  1 ) for x in x2 ] ) 
+    dbarx2  = np.array( [ pdf( x, -1 ) for x in x2 ] ) 
 
     dtau = {}
     M_lambda_udbar = {}
@@ -305,4 +305,5 @@ plot_options = {
     'f2tildeLT'   : {'binning':[Nbins,-1,1],        'tex':'#tilde{f}_{2LT}' ,},
     'fTTprime'    : {'binning':[Nbins,-1,1],        'tex':'f_{TT}'     ,},
     'ftildeTTprime':{'binning':[Nbins,-1,1],        'tex':'#tilde{f}_{TT}',},
-    } 
+    }
+ 
