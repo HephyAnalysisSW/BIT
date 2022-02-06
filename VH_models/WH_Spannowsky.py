@@ -191,6 +191,7 @@ def getWeights(features, eft):
     dbarx2  = np.array( [ pdf( x, -1 ) for x in x2 ] ) 
 
     dtau = {}
+    dtau_flipped = {}
     M_lambda_udbar = {}
     M_lambda_dbaru = {}
     M_lambda_dubar = {}
@@ -223,60 +224,64 @@ def getWeights(features, eft):
             M_lambda_dubar[lambda_boson] = { k: -sin_theta/2*M[k] for k in M.keys()}
             M_lambda_ubard[lambda_boson] = { k: M_lambda_udbar[lambda_boson][k] for k in M.keys()}
 
-        dtau[lambda_boson] = {}
+        dtau[lambda_boson]         = {}
+        dtau_flipped[lambda_boson] = {}
         for tau in [+1, -1]:
             if abs(tau)==1:
-                dtau[lambda_boson][tau] = tau*(1+lambda_boson*tau*cos_theta_hat)/sqrt(2.)*np.exp(1j*lambda_boson*phi_hat) 
+                dtau[lambda_boson][tau]         = tau*(1+lambda_boson*tau*cos_theta_hat)/sqrt(2.)*np.exp(1j*lambda_boson*phi_hat) 
+                dtau_flipped[lambda_boson][tau] = tau*(1+lambda_boson*tau*cos_theta_hat)/sqrt(2.)*np.exp(1j*lambda_boson*(pi-phi_hat)) 
             else:
                 dtau[lambda_boson][tau] = sin_theta_hat 
+                dtau_flipped[lambda_boson][tau] = dtau[lambda_boson][tau]
 
-    dsigmaWH  = {der:np.zeros(N_events).astype('complex128') for der in derivatives}
+    dsigmaWH = {der:np.zeros(N_events).astype('complex128') for der in derivatives}
 
     dsigmaWH_prefac = m['W']*k_W/(constWH*s_hat**1.5)*g**2*2 #factor 2 from sum_{u,d} |V_{ud}|**2 = 2
-    for lam1 in [+1, -1, 0]:
-        for lam2 in [+1, -1, 0]:
-            # pp->HW+
-            dsigmaWH[tuple()][is_plus] += dsigmaWH_prefac[is_plus]*(
-                  ux1[is_plus]*dbarx2[is_plus]*np.conjugate(dtau[lam1][-1][is_plus])*np.conjugate(M_lambda_udbar[lam1][tuple()][is_plus])*M_lambda_udbar[lam2][tuple()][is_plus]*dtau[lam2][-1][is_plus]
-                + dbarx1[is_plus]*ux2[is_plus]*np.conjugate(dtau[lam1][-1][is_plus])*np.conjugate(M_lambda_dbaru[lam1][tuple()][is_plus])*M_lambda_dbaru[lam2][tuple()][is_plus]*dtau[lam2][-1][is_plus]
-            )
-            for der in first_derivatives:
-                dsigmaWH[der][is_plus] += dsigmaWH_prefac[is_plus]*(
-                      ux1[is_plus]*dbarx2[is_plus]*np.conjugate(dtau[lam1][-1][is_plus])*
-                                (np.conjugate(M_lambda_udbar[lam1][der][is_plus])*M_lambda_udbar[lam2][tuple()][is_plus]\
-                               + np.conjugate(M_lambda_udbar[lam1][tuple()][is_plus])*M_lambda_udbar[lam2][der][is_plus])*dtau[lam2][-1][is_plus]
-                    + dbarx1[is_plus]*ux2[is_plus]*np.conjugate(dtau[lam1][-1][is_plus])*
-                                (np.conjugate(M_lambda_dbaru[lam1][der][is_plus])*M_lambda_dbaru[lam2][tuple()][is_plus]\
-                               + np.conjugate(M_lambda_dbaru[lam1][tuple()][is_plus])*M_lambda_dbaru[lam2][der][is_plus])*dtau[lam2][-1][is_plus]
+    for dtau_ in [ dtau, dtau_flipped]: # Summing up ambiguity from W reco. See e.g. Wulzer https://arxiv.org/pdf/2007.10356.pdf Eq. 21
+        for lam1 in [+1, -1, 0]:
+            for lam2 in [+1, -1, 0]:
+                # pp->HW+
+                dsigmaWH[tuple()][is_plus] += dsigmaWH_prefac[is_plus]*(
+                      ux1[is_plus]*dbarx2[is_plus]*np.conjugate(dtau_[lam1][-1][is_plus])*np.conjugate(M_lambda_udbar[lam1][tuple()][is_plus])*M_lambda_udbar[lam2][tuple()][is_plus]*dtau_[lam2][-1][is_plus]
+                    + dbarx1[is_plus]*ux2[is_plus]*np.conjugate(dtau_[lam1][-1][is_plus])*np.conjugate(M_lambda_dbaru[lam1][tuple()][is_plus])*M_lambda_dbaru[lam2][tuple()][is_plus]*dtau_[lam2][-1][is_plus]
                 )
-            for der in second_derivatives:
-                dsigmaWH[der][is_plus] += dsigmaWH_prefac[is_plus]*(
-                      ux1[is_plus]*dbarx2[is_plus]*np.conjugate(dtau[lam1][-1][is_plus])*
-                                (np.conjugate(M_lambda_udbar[lam1][(der[0],)][is_plus])*M_lambda_udbar[lam2][(der[1],)][is_plus]
-                               + np.conjugate(M_lambda_udbar[lam1][(der[1],)][is_plus])*M_lambda_udbar[lam2][(der[0],)][is_plus])*dtau[lam2][-1][is_plus]
-                    + dbarx1[is_plus]*ux2[is_plus]*np.conjugate(dtau[lam1][-1][is_plus])*
-                                (np.conjugate(M_lambda_dbaru[lam1][(der[0],)][is_plus])*M_lambda_dbaru[lam2][(der[1],)][is_plus]
-                               + np.conjugate(M_lambda_dbaru[lam1][(der[1],)][is_plus])*M_lambda_dbaru[lam2][(der[0],)][is_plus])*dtau[lam2][-1][is_plus]
+                for der in first_derivatives:
+                    dsigmaWH[der][is_plus] += dsigmaWH_prefac[is_plus]*(
+                          ux1[is_plus]*dbarx2[is_plus]*np.conjugate(dtau_[lam1][-1][is_plus])*
+                                    (np.conjugate(M_lambda_udbar[lam1][der][is_plus])*M_lambda_udbar[lam2][tuple()][is_plus]\
+                                   + np.conjugate(M_lambda_udbar[lam1][tuple()][is_plus])*M_lambda_udbar[lam2][der][is_plus])*dtau_[lam2][-1][is_plus]
+                        + dbarx1[is_plus]*ux2[is_plus]*np.conjugate(dtau_[lam1][-1][is_plus])*
+                                    (np.conjugate(M_lambda_dbaru[lam1][der][is_plus])*M_lambda_dbaru[lam2][tuple()][is_plus]\
+                                   + np.conjugate(M_lambda_dbaru[lam1][tuple()][is_plus])*M_lambda_dbaru[lam2][der][is_plus])*dtau_[lam2][-1][is_plus]
+                    )
+                for der in second_derivatives:
+                    dsigmaWH[der][is_plus] += dsigmaWH_prefac[is_plus]*(
+                          ux1[is_plus]*dbarx2[is_plus]*np.conjugate(dtau_[lam1][-1][is_plus])*
+                                    (np.conjugate(M_lambda_udbar[lam1][(der[0],)][is_plus])*M_lambda_udbar[lam2][(der[1],)][is_plus]
+                                   + np.conjugate(M_lambda_udbar[lam1][(der[1],)][is_plus])*M_lambda_udbar[lam2][(der[0],)][is_plus])*dtau_[lam2][-1][is_plus]
+                        + dbarx1[is_plus]*ux2[is_plus]*np.conjugate(dtau_[lam1][-1][is_plus])*
+                                    (np.conjugate(M_lambda_dbaru[lam1][(der[0],)][is_plus])*M_lambda_dbaru[lam2][(der[1],)][is_plus]
+                                   + np.conjugate(M_lambda_dbaru[lam1][(der[1],)][is_plus])*M_lambda_dbaru[lam2][(der[0],)][is_plus])*dtau_[lam2][-1][is_plus]
+                    )
+                # pp->HW-
+                dsigmaWH[tuple()][~is_plus] += dsigmaWH_prefac[~is_plus]*(
+                      dx1[~is_plus]*ubarx2[~is_plus]*np.conjugate(dtau_[lam1][-1][~is_plus])*np.conjugate(M_lambda_dubar[lam1][tuple()][~is_plus])*M_lambda_dubar[lam2][tuple()][~is_plus]*dtau_[lam2][-1][~is_plus]
+                    + ubarx1[~is_plus]*dx2[~is_plus]*np.conjugate(dtau_[lam1][-1][~is_plus])*np.conjugate(M_lambda_ubard[lam1][tuple()][~is_plus])*M_lambda_ubard[lam2][tuple()][~is_plus]*dtau_[lam2][-1][~is_plus]
                 )
-            # pp->HW-
-            dsigmaWH[tuple()][~is_plus] += dsigmaWH_prefac[~is_plus]*(
-                  dx1[~is_plus]*ubarx2[~is_plus]*np.conjugate(dtau[lam1][-1][~is_plus])*np.conjugate(M_lambda_dubar[lam1][tuple()][~is_plus])*M_lambda_dubar[lam2][tuple()][~is_plus]*dtau[lam2][-1][~is_plus]
-                + ubarx1[~is_plus]*dx2[~is_plus]*np.conjugate(dtau[lam1][-1][~is_plus])*np.conjugate(M_lambda_ubard[lam1][tuple()][~is_plus])*M_lambda_ubard[lam2][tuple()][~is_plus]*dtau[lam2][-1][~is_plus]
-            )
-            for der in first_derivatives:
-                dsigmaWH[der][~is_plus] += dsigmaWH_prefac[~is_plus]*(
-                      dx1[~is_plus]*ubarx2[~is_plus]*np.conjugate(dtau[lam1][-1][~is_plus])*(np.conjugate(M_lambda_dubar[lam1][der][~is_plus])*M_lambda_dubar[lam2][tuple()][~is_plus]
-                                                   + np.conjugate(M_lambda_dubar[lam1][tuple()][~is_plus])*M_lambda_dubar[lam2][der][~is_plus])*dtau[lam2][-1][~is_plus]
-                    + ubarx1[~is_plus]*dx2[~is_plus]*np.conjugate(dtau[lam1][-1][~is_plus])*(np.conjugate(M_lambda_ubard[lam1][der][~is_plus])*M_lambda_ubard[lam2][tuple()][~is_plus]
-                                                   + np.conjugate(M_lambda_ubard[lam1][tuple()][~is_plus])*M_lambda_ubard[lam2][der][~is_plus])*dtau[lam2][-1][~is_plus]
-                )
-            for der in second_derivatives:
-                dsigmaWH[der][~is_plus] += dsigmaWH_prefac[~is_plus]*(
-                      dx1[~is_plus]*ubarx2[~is_plus]*np.conjugate(dtau[lam1][-1][~is_plus])*(np.conjugate(M_lambda_dubar[lam1][(der[0],)][~is_plus])*M_lambda_dubar[lam2][(der[1],)][~is_plus]
-                                                   + np.conjugate(M_lambda_dubar[lam1][(der[1],)][~is_plus])*M_lambda_dubar[lam2][(der[0],)][~is_plus])*dtau[lam2][-1][~is_plus]
-                    + ubarx1[~is_plus]*dx2[~is_plus]*np.conjugate(dtau[lam1][-1][~is_plus])*(np.conjugate(M_lambda_ubard[lam1][(der[0],)][~is_plus])*M_lambda_ubard[lam2][(der[1],)][~is_plus]
-                                                   + np.conjugate(M_lambda_ubard[lam1][(der[1],)][~is_plus])*M_lambda_ubard[lam2][(der[0],)][~is_plus])*dtau[lam2][-1][~is_plus]
-                )
+                for der in first_derivatives:
+                    dsigmaWH[der][~is_plus] += dsigmaWH_prefac[~is_plus]*(
+                          dx1[~is_plus]*ubarx2[~is_plus]*np.conjugate(dtau_[lam1][-1][~is_plus])*(np.conjugate(M_lambda_dubar[lam1][der][~is_plus])*M_lambda_dubar[lam2][tuple()][~is_plus]
+                                                       + np.conjugate(M_lambda_dubar[lam1][tuple()][~is_plus])*M_lambda_dubar[lam2][der][~is_plus])*dtau_[lam2][-1][~is_plus]
+                        + ubarx1[~is_plus]*dx2[~is_plus]*np.conjugate(dtau_[lam1][-1][~is_plus])*(np.conjugate(M_lambda_ubard[lam1][der][~is_plus])*M_lambda_ubard[lam2][tuple()][~is_plus]
+                                                       + np.conjugate(M_lambda_ubard[lam1][tuple()][~is_plus])*M_lambda_ubard[lam2][der][~is_plus])*dtau_[lam2][-1][~is_plus]
+                    )
+                for der in second_derivatives:
+                    dsigmaWH[der][~is_plus] += dsigmaWH_prefac[~is_plus]*(
+                          dx1[~is_plus]*ubarx2[~is_plus]*np.conjugate(dtau_[lam1][-1][~is_plus])*(np.conjugate(M_lambda_dubar[lam1][(der[0],)][~is_plus])*M_lambda_dubar[lam2][(der[1],)][~is_plus]
+                                                       + np.conjugate(M_lambda_dubar[lam1][(der[1],)][~is_plus])*M_lambda_dubar[lam2][(der[0],)][~is_plus])*dtau_[lam2][-1][~is_plus]
+                        + ubarx1[~is_plus]*dx2[~is_plus]*np.conjugate(dtau_[lam1][-1][~is_plus])*(np.conjugate(M_lambda_ubard[lam1][(der[0],)][~is_plus])*M_lambda_ubard[lam2][(der[1],)][~is_plus]
+                                                       + np.conjugate(M_lambda_ubard[lam1][(der[1],)][~is_plus])*M_lambda_ubard[lam2][(der[0],)][~is_plus])*dtau_[lam2][-1][~is_plus]
+                    )
 
     # Check(ed) that residual imaginary parts are tiny
     dsigmaWH  = {k:np.real(dsigmaWH[k])  for k in derivatives}

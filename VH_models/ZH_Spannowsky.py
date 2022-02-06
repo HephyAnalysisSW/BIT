@@ -197,45 +197,42 @@ def getWeights(features, eft):
             dtau_flipped = {}
             for lambda_boson in [+1, -1, 0]:
                 if abs(lambda_boson)==1:
-                    prefac   = gZ*gZsigma[sigma_quark][pdg_quark]*m['Z']/(cw*sqrt_s_hat)
-                    Mhat = {tuple()   : prefac*s_hat/m['Z']**2*(1.+v**2/eft['Lambda']**2*(g*t3q*eft['cHQ3']/(cw*gZsigma[sigma_quark][pdg_quark]) + c2w*eft['cHW']-1j*lambda_boson*c2w*eft['cHWtil'])),
-                           ('cHQ3',)  : prefac*s_hat/m['Z']**2*v**2/eft['Lambda']**2*g*t3q/(cw*gZsigma[sigma_quark][pdg_quark]),
-                           ('cHW',)   : prefac*s_hat/m['Z']**2*v**2/eft['Lambda']**2*c2w,
-                           ('cHWtil',): prefac*s_hat/m['Z']**2*v**2/eft['Lambda']**2*(-1j*lambda_boson*c2w),
+                    prefac   = g*gZsigma[sigma_quark][pdg_quark]*m['Z']/(cw*sqrt_s_hat)
+                    Mhat = {tuple()   : prefac*(1.+v**2/eft['Lambda']**2*(s_hat/m['Z']**2)*(g*t3q*eft['cHQ3']/(cw*gZsigma[sigma_quark][pdg_quark]) + c2w*eft['cHW']-1j*lambda_boson*c2w*eft['cHWtil'])),
+                           ('cHQ3',)  : prefac*v**2/eft['Lambda']**2*s_hat/m['Z']**2*g*t3q/(cw*gZsigma[sigma_quark][pdg_quark]),
+                           ('cHW',)   : prefac*v**2/eft['Lambda']**2*s_hat/m['Z']**2*c2w,
+                           ('cHWtil',): prefac*v**2/eft['Lambda']**2*s_hat/m['Z']**2*(-1j*lambda_boson*c2w),
                             }
                     M_lambda_sigma_qqbar[lambda_boson] = {k: sigma_quark*(1+sigma_quark*lambda_boson*cos_theta)/sqrt(2.)*Mhat[k] for k in Mhat.keys()} 
                     M_lambda_sigma_qbarq[lambda_boson] = {k:-sigma_quark*(1-sigma_quark*lambda_boson*cos_theta)/sqrt(2.)*Mhat[k] for k in Mhat.keys()}
                 else:
-                    prefac   = -sin_theta*g/cw*gZsigma[sigma_quark][pdg_quark]/(2*cw)
+                    prefac   = -sin_theta*g*gZsigma[sigma_quark][pdg_quark]/(2*cw)
                     M_lambda_sigma_qqbar[lambda_boson] = \
                            {tuple()   : prefac*(1.+v**2/eft['Lambda']**2*(4*c2w*eft['cHW']+g*t3q*eft['cHQ3']/(cw*gZsigma[sigma_quark][pdg_quark])*(s_hat/m['Z']**2-0.5))),
-                           ('cHQ3',)  : prefac*v**2/eft['Lambda']**2*g*t3q/(cw*gZsigma[sigma_quark][pdg_quark])*(s_hat/m['Z']**2-0.5),
-                           ('cHW',)   : prefac*v**2/eft['Lambda']**2*4*c2w,
+                           ('cHQ3',)  : prefac*    v**2/eft['Lambda']**2*g*t3q/(cw*gZsigma[sigma_quark][pdg_quark])*(s_hat/m['Z']**2-0.5),
+                           ('cHW',)   : prefac*    v**2/eft['Lambda']**2*4*c2w,
                            ('cHWtil',): np.zeros(N_events),
                             }
                     M_lambda_sigma_qbarq[lambda_boson] = M_lambda_sigma_qqbar[lambda_boson]
 
                 dtau[lambda_boson] = {}
-                for tau in [+1, -1]:
-                    if abs(tau)==1:
-                        dtau[lambda_boson][tau] = tau*(1+lambda_boson*tau*cos_theta_hat)/sqrt(2.)*np.exp(1j*lambda_boson*phi_hat) 
-                    else:
-                        dtau[lambda_boson][tau] = sin_theta_hat 
+                dtau_flipped[lambda_boson] = {}
                 ## flipped dtau:
                 ## theta_hat -> pi - theta_hat
                 ## phi       -> pi + phi_hat
                 ## sin(pi-theta) = sin(theta), cos(pi-theta) = -cos(theta), sin(pi+phi) = -sin(phi), cos(pi+phi) = -cos(phi)
-                dtau_flipped[lambda_boson] = {}
                 for tau in [+1, -1]:
                     if abs(tau)==1:
+                        dtau[lambda_boson][tau]         = tau*(1+lambda_boson*tau*cos_theta_hat)/sqrt(2.)*np.exp(1j*lambda_boson*phi_hat) 
                         dtau_flipped[lambda_boson][tau] = tau*(1-lambda_boson*tau*cos_theta_hat)/sqrt(2.)*( -np.exp(1j*lambda_boson*phi_hat))
                     else:
+                        dtau[lambda_boson][tau]         = sin_theta_hat 
                         dtau_flipped[lambda_boson][tau] = sin_theta_hat 
 
             for lam1 in [+1, -1, 0]:
                 for lam2 in [+1, -1, 0]:
                     for tau in [+1, -1]:
-                        for flip_tau in [False, True]:
+                        for flip_tau in [False]:#, True]:
 
                             if not flip_tau:
                                 dtau_lam1_tau = dtau[lam1][tau]
@@ -254,20 +251,20 @@ def getWeights(features, eft):
                             for der in first_derivatives:
                                 dsigmaZH[der] += dsigmaZH_prefac*(
                                      qx1_qbarx2*np.conjugate(dtau_lam1_tau)*(
-                                        np.conjugate(M_lambda_sigma_qqbar[lam1][der])*M_lambda_sigma_qqbar[lam2][tuple()]*dtau_lam2_tau
-                                       +np.conjugate(M_lambda_sigma_qqbar[lam1][tuple()])*M_lambda_sigma_qqbar[lam2][der]*dtau_lam2_tau)
+                                        np.conjugate(M_lambda_sigma_qqbar[lam1][der])    *M_lambda_sigma_qqbar[lam2][tuple()]
+                                       +np.conjugate(M_lambda_sigma_qqbar[lam1][tuple()])*M_lambda_sigma_qqbar[lam2][der])*dtau_lam2_tau
                                    + qbarx1_qx2*np.conjugate(dtau_lam1_tau)*(
-                                        np.conjugate(M_lambda_sigma_qbarq[lam1][der])*M_lambda_sigma_qbarq[lam2][tuple()]*dtau_lam2_tau
-                                       +np.conjugate(M_lambda_sigma_qbarq[lam1][tuple()])*M_lambda_sigma_qbarq[lam2][der]*dtau_lam2_tau)
+                                        np.conjugate(M_lambda_sigma_qbarq[lam1][der])    *M_lambda_sigma_qbarq[lam2][tuple()]
+                                       +np.conjugate(M_lambda_sigma_qbarq[lam1][tuple()])*M_lambda_sigma_qbarq[lam2][der])*dtau_lam2_tau
                                 )
                             for der in second_derivatives:
                                 dsigmaZH[der] += dsigmaZH_prefac*(
                                      qx1_qbarx2*np.conjugate(dtau_lam1_tau)*(
-                                        np.conjugate(M_lambda_sigma_qqbar[lam1][(der[0],)])*M_lambda_sigma_qqbar[lam2][(der[1],)]*dtau_lam2_tau
-                                       +np.conjugate(M_lambda_sigma_qqbar[lam1][(der[1],)])*M_lambda_sigma_qqbar[lam2][(der[0],)]*dtau_lam2_tau)
+                                        np.conjugate(M_lambda_sigma_qqbar[lam1][(der[0],)])*M_lambda_sigma_qqbar[lam2][(der[1],)]
+                                       +np.conjugate(M_lambda_sigma_qqbar[lam1][(der[1],)])*M_lambda_sigma_qqbar[lam2][(der[0],)])*dtau_lam2_tau
                                    + qbarx1_qx2*np.conjugate(dtau_lam1_tau)*(
-                                        np.conjugate(M_lambda_sigma_qbarq[lam1][(der[0],)])*M_lambda_sigma_qbarq[lam2][(der[1],)]*dtau_lam2_tau
-                                       +np.conjugate(M_lambda_sigma_qbarq[lam1][(der[1],)])*M_lambda_sigma_qbarq[lam2][(der[0],)]*dtau_lam2_tau)
+                                        np.conjugate(M_lambda_sigma_qbarq[lam1][(der[0],)])*M_lambda_sigma_qbarq[lam2][(der[1],)]
+                                       +np.conjugate(M_lambda_sigma_qbarq[lam1][(der[1],)])*M_lambda_sigma_qbarq[lam2][(der[0],)])*dtau_lam2_tau
                                 )
     # Check(ed) that residual imaginary parts are tiny
     dsigmaZH  = {k:np.real(dsigmaZH[k])  for k in derivatives}
@@ -276,11 +273,11 @@ def getWeights(features, eft):
 Nbins = 50
 plot_options = {
     'sqrt_s_hat': {'binning':[Nbins,200,3000],      'tex':"#sqrt{#hat{s}}",},
+    'pT':         {'binning':[Nbins,200,1000],      'tex':"p_{T}",},
     'y':          {'binning':[Nbins,-4,4],          'tex':"y",},
     'cos_theta':  {'binning':[Nbins,-1,1],          'tex':"cos(#theta)",},
     'cos_theta_hat': {'binning':[Nbins,-1,1],       'tex':"cos(#hat{#theta})",},
     'phi_hat':    {'binning':[Nbins,-pi,pi],        'tex':"#hat{#phi}",},
-    'lep_charge': {'binning':[3,-1,2],              'tex':"charge(l_{W})",},
     'fLL'         : {'binning':[Nbins,0,1],        'tex':'f_{LL}'          ,},
     'f1TT'        : {'binning':[Nbins,-1,1],        'tex':'f_{1TT}'         ,},
     'f2TT'        : {'binning':[Nbins, 0,4],        'tex':'f_{2TT}'         ,},
@@ -290,4 +287,39 @@ plot_options = {
     'f2tildeLT'   : {'binning':[Nbins,-1,1],        'tex':'#tilde{f}_{2LT}' ,},
     'fTTprime'    : {'binning':[Nbins,-1,1],        'tex':'f_{TT}'     ,},
     'ftildeTTprime':{'binning':[Nbins,-1,1],        'tex':'#tilde{f}_{TT}',},
-    } 
+    }
+
+eft_plot_points = [
+    {'color':ROOT.kBlack, 'eft':sm, 'tex':"SM"},
+    {'color':ROOT.kBlue+2,  'eft':make_eft(cHQ3=.1),  'tex':"c_{HQ}^{(3)}=0.1"},
+    {'color':ROOT.kBlue-4,  'eft':make_eft(cHQ3=-.1), 'tex':"c_{HQ}^{(3)}=-0.1"},
+    {'color':ROOT.kGreen+2,  'eft':make_eft(cHW=1),   'tex':"c_{HW}=1"},
+    {'color':ROOT.kGreen-4,  'eft':make_eft(cHW=-1),  'tex':"c_{HW}=-1"},
+    {'color':ROOT.kMagenta+2,  'eft':make_eft(cHWtil=1),   'tex':"c_{H#tilde{W}}=1"},
+    {'color':ROOT.kMagenta-4,  'eft':make_eft(cHWtil=-1),  'tex':"c_{H#tilde{W}}=-1"},
+]
+
+bit_cfg = {der: {'n_trees': 250,
+                 'max_depth': 4,
+                 'learning_rate': 0.20,
+                 'min_size': 30,} for der in derivatives if der!=tuple() }
+bit_cfg[('cHQ3',)]['n_trees'] = 80
+bit_cfg[('cHQ3','cHQ3')]['n_trees'] = 80
+
+def load(directory = '/groups/hephy/cms/robert.schoefbeck/BIT/models/', prefix = 'bit_ZH_Spannowsky_nTraining_2000000', derivatives=derivatives):
+    import sys, os
+    sys.path.insert(0,os.path.expandvars("$CMSSW_BASE/src/BIT"))
+    from BoostedInformationTree import BoostedInformationTree
+    bits = {}
+    for derivative in derivatives:
+        if derivative == tuple(): continue
+
+        filename = os.path.expandvars(os.path.join(directory, "%s_derivative_%s"% (prefix, '_'.join(derivative))) + '.pkl')
+        try:
+            print ("Loading %s for %r"%( filename, derivative))
+            bits[derivative] = BoostedInformationTree.load(filename)
+        except IOError:
+            print ("Could not load %s for %r"%( filename, derivative))
+
+    return bits
+
