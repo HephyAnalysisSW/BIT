@@ -8,12 +8,12 @@ from math import sqrt
 
 # Definition of the model
 ## exponential
-pT0   = 25.
-alpha = 1./100
+pT0   = 0.#25.
+alpha = 1./800.
 theta0 = alpha # define same variable in all models for plotting
-xmin  = 20
+xmin  = 0
 xmax  = 420 
-ymin  = 20
+ymin  = 0
 ymax  = 420 
 texX  = "p_{T} [GeV]"
 model            = ROOT.TF2("model", "1./{alpha}*exp(-{alpha}*(sqrt(x**2+y**2)-{pT0}))".format(pT0=pT0, alpha=alpha), xmin, xmax, ymin, ymax)
@@ -22,11 +22,10 @@ min_score_theory = min( score_theory.Eval(xmin, ymin), score_theory.Eval(xmax, y
 max_score_theory = max( score_theory.Eval(xmin, ymin), score_theory.Eval(xmax, ymax) ) 
 
 make_log  = True
-n_events      = 2000000
 n_trees       = 500
-learning_rate = 0.1 
-max_depth     = 2
-min_size      = 50
+learning_rate = 0.2 
+max_depth     = 4
+min_size      = 20
 n_plot = 10 # Plot every tenth
 
 weighted      = False

@@ -198,19 +198,21 @@ def getWeights(features, eft):
             for lambda_boson in [+1, -1, 0]:
                 if abs(lambda_boson)==1:
                     prefac   = g*gZsigma[sigma_quark][pdg_quark]*m['Z']/(cw*sqrt_s_hat)
-                    Mhat = {tuple()   : prefac*(1.+v**2/eft['Lambda']**2*(s_hat/m['Z']**2)*(g*t3q*eft['cHQ3']/(cw*gZsigma[sigma_quark][pdg_quark]) + c2w*eft['cHW']-1j*lambda_boson*c2w*eft['cHWtil'])),
+                    c2w_factor = c2w + Qq[pdg_quark]*g*s2w*cw/gZsigma[sigma_quark][pdg_quark] 
+                    #print c2w, pdg_quark, sigma_quark, gZsigma[sigma_quark][pdg_quark], "c2w_factor", c2w_factor, "2nd term", Qq[pdg_quark]*g*s2w*cw/gZsigma[sigma_quark][pdg_quark]
+                    Mhat = {tuple()   : prefac*(1.+v**2/eft['Lambda']**2*(s_hat/m['Z']**2)*(g*t3q*eft['cHQ3']/(cw*gZsigma[sigma_quark][pdg_quark]) + c2w_factor*eft['cHW']-1j*lambda_boson*c2w_factor*eft['cHWtil'])),
                            ('cHQ3',)  : prefac*v**2/eft['Lambda']**2*s_hat/m['Z']**2*g*t3q/(cw*gZsigma[sigma_quark][pdg_quark]),
-                           ('cHW',)   : prefac*v**2/eft['Lambda']**2*s_hat/m['Z']**2*c2w,
-                           ('cHWtil',): prefac*v**2/eft['Lambda']**2*s_hat/m['Z']**2*(-1j*lambda_boson*c2w),
+                           ('cHW',)   : prefac*v**2/eft['Lambda']**2*s_hat/m['Z']**2*c2w_factor,
+                           ('cHWtil',): prefac*v**2/eft['Lambda']**2*s_hat/m['Z']**2*(-1j*lambda_boson*c2w_factor),
                             }
                     M_lambda_sigma_qqbar[lambda_boson] = {k: sigma_quark*(1+sigma_quark*lambda_boson*cos_theta)/sqrt(2.)*Mhat[k] for k in Mhat.keys()} 
                     M_lambda_sigma_qbarq[lambda_boson] = {k:-sigma_quark*(1-sigma_quark*lambda_boson*cos_theta)/sqrt(2.)*Mhat[k] for k in Mhat.keys()}
                 else:
                     prefac   = -sin_theta*g*gZsigma[sigma_quark][pdg_quark]/(2*cw)
                     M_lambda_sigma_qqbar[lambda_boson] = \
-                           {tuple()   : prefac*(1.+v**2/eft['Lambda']**2*(4*c2w*eft['cHW']+g*t3q*eft['cHQ3']/(cw*gZsigma[sigma_quark][pdg_quark])*(s_hat/m['Z']**2-0.5))),
+                           {tuple()   : prefac*(1.+v**2/eft['Lambda']**2*(4*c2w_factor*eft['cHW']+g*t3q*eft['cHQ3']/(cw*gZsigma[sigma_quark][pdg_quark])*(s_hat/m['Z']**2-0.5))),
                            ('cHQ3',)  : prefac*    v**2/eft['Lambda']**2*g*t3q/(cw*gZsigma[sigma_quark][pdg_quark])*(s_hat/m['Z']**2-0.5),
-                           ('cHW',)   : prefac*    v**2/eft['Lambda']**2*4*c2w,
+                           ('cHW',)   : prefac*    v**2/eft['Lambda']**2*4*c2w_factor,
                            ('cHWtil',): np.zeros(N_events),
                             }
                     M_lambda_sigma_qbarq[lambda_boson] = M_lambda_sigma_qqbar[lambda_boson]
@@ -272,8 +274,8 @@ def getWeights(features, eft):
 
 Nbins = 50
 plot_options = {
-    'sqrt_s_hat': {'binning':[Nbins,200,3000],      'tex':"#sqrt{#hat{s}}",},
-    'pT':         {'binning':[Nbins,200,1000],      'tex':"p_{T}",},
+    'sqrt_s_hat': {'binning':[40,650,2250],      'tex':"#sqrt{#hat{s}}",},
+    'pT':         {'binning':[35,300,1000],      'tex':"p_{T}",},
     'y':          {'binning':[Nbins,-4,4],          'tex':"y",},
     'cos_theta':  {'binning':[Nbins,-1,1],          'tex':"cos(#theta)",},
     'cos_theta_hat': {'binning':[Nbins,-1,1],       'tex':"cos(#hat{#theta})",},
@@ -290,13 +292,13 @@ plot_options = {
     }
 
 eft_plot_points = [
-    {'color':ROOT.kBlack, 'eft':sm, 'tex':"SM"},
-    {'color':ROOT.kBlue+2,  'eft':make_eft(cHQ3=.1),  'tex':"c_{HQ}^{(3)}=0.1"},
-    {'color':ROOT.kBlue-4,  'eft':make_eft(cHQ3=-.1), 'tex':"c_{HQ}^{(3)}=-0.1"},
-    {'color':ROOT.kGreen+2,  'eft':make_eft(cHW=1),   'tex':"c_{HW}=1"},
-    {'color':ROOT.kGreen-4,  'eft':make_eft(cHW=-1),  'tex':"c_{HW}=-1"},
-    {'color':ROOT.kMagenta+2,  'eft':make_eft(cHWtil=1),   'tex':"c_{H#tilde{W}}=1"},
-    {'color':ROOT.kMagenta-4,  'eft':make_eft(cHWtil=-1),  'tex':"c_{H#tilde{W}}=-1"},
+    {'color':ROOT.kBlack,       'eft':sm, 'tex':"SM"},
+    {'color':ROOT.kBlue+2,      'eft':make_eft(cHQ3=.05),  'tex':"c_{HQ}^{(3)}=0.05"},
+    {'color':ROOT.kBlue-4,      'eft':make_eft(cHQ3=-.05), 'tex':"c_{HQ}^{(3)}=-0.05"},
+    {'color':ROOT.kGreen+2,     'eft':make_eft(cHW=0.5),   'tex':"c_{HW}=0.5"},
+    {'color':ROOT.kGreen-4,     'eft':make_eft(cHW=-0.5),  'tex':"c_{HW}=-0.5"},
+    {'color':ROOT.kMagenta+2,   'eft':make_eft(cHWtil=0.5),   'tex':"c_{H#tilde{W}}=0.5"},
+    {'color':ROOT.kMagenta-4,   'eft':make_eft(cHWtil=-0.5),  'tex':"c_{H#tilde{W}}=-0.5"},
 ]
 
 bit_cfg = {der: {'n_trees': 250,

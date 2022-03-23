@@ -133,7 +133,7 @@ delta = (log(b) - log(a))/Nspace
 logRange = np.exp( np.arange( log(a), log(b) + 2*delta, delta))
 
 h_pdf_dbar_u = ROOT.TH2D("h_pdf_dbar_u", "h_pdf_dbar_u", len(logRange)-1, array.array('d', logRange), len(logRange)-1, array.array('d', logRange))
-with open('/eos/vbc/user/robert.schoefbeck/TMB/pdf_data/WZ_x1x2_dbar_u.txt') as f:
+with open('/eos/vbc/group/cms/robert.schoefbeck/TMB/pdf_data/WZ_x1x2_dbar_u.txt') as f:
     reader = csv.reader(f)
     data = list(reader)
 
@@ -146,7 +146,7 @@ with open('/eos/vbc/user/robert.schoefbeck/TMB/pdf_data/WZ_x1x2_dbar_u.txt') as 
 
 h_pdf_ubar_d = ROOT.TH2D("h_pdf_ubar_d", "h_pdf_ubar_d", len(logRange)-1, array.array('d', logRange), len(logRange)-1, array.array('d', logRange))
 vals = []
-with open('/eos/vbc/user/robert.schoefbeck/TMB/pdf_data/WZ_x1x2_ubar_d.txt') as f:
+with open('/eos/vbc/group/cms/robert.schoefbeck/TMB/pdf_data/WZ_x1x2_ubar_d.txt') as f:
     reader = csv.reader(f)
     data = list(reader)
 

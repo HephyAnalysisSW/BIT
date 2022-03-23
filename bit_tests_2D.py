@@ -8,6 +8,7 @@ import cProfile
 import time
 import os, sys
 from math import log, exp
+import array
 
 # load root macro
 ROOT.gROOT.LoadMacro('$CMSSW_BASE/src/Analysis/Tools/scripts/tdrstyle.C')
@@ -17,7 +18,7 @@ ROOT.gROOT.LoadMacro("$CMSSW_BASE/src/BIT/tdrstyles/anotherNiceColorPalette.C")
 ROOT.niceColorPalette(15)
 
 # Analysis
-import Analysis.Tools.syncer
+import Analysis.Tools.syncer as syncer
 
 # RootTools
 from RootTools.core.standard   import *
@@ -38,17 +39,20 @@ import argparse
 argParser = argparse.ArgumentParser(description = "Argument parser")
 argParser.add_argument("--plot_directory",     action="store",      default="BIT_v1",                                                                help="plot sub-directory")
 argParser.add_argument("--model",              action="store",      default="exponential_2D", type=str,   choices=allModels,                         help="import model")
-argParser.add_argument("--nTraining",          action="store",      default=100000,           type=int,                                              help="number of training events")
+argParser.add_argument("--nTraining",          action="store",      default=1000000,           type=int,                                              help="number of training events")
 argParser.add_argument("--luminosity",         action="store",      default=137,              type=int,                                              help="luminosity value, currently only for plot label")
-argParser.add_argument("--treeRange",          action="store",      default=[1, 2, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100], type=int, nargs='*', help="list of nTrees for plots")
+argParser.add_argument("--treeRange",          action="store",      default=[1, 2, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500], type=int, nargs='*', help="list of nTrees for plots")
 args = argParser.parse_args()
 
 # import the toy model
-import toy_models as models
-model = getattr( models, args.model )
+#import toy_models as models
+#model = getattr( models, args.model )
+
+import imp
+model = imp.load_source(args.model, os.path.expandvars("$CMSSW_BASE/src/BIT/toy_models/%s.py"%args.model))
 
 # Produce training data set
-training_features, training_weights, training_diff_weights = model.get_dataset( args.nTraining )
+training_features, training_weights, training_diff_weights = model.get_weighted_dataset( args.nTraining )
 
 # directory for plots
 plot_directory = os.path.join( user_plot_directory, args.plot_directory, model.id_string )
@@ -60,9 +64,9 @@ time1 = time.time()
 
 # BIT config
 n_trees       = model.n_trees
-max_depth     = 2
+max_depth     = 4
 learning_rate = 0.20
-min_size      = 100
+min_size      = 15
 n_plot        = 5
 
 bit= BoostedInformationTree(
@@ -84,7 +88,7 @@ print "Boosting time: %.2f seconds" % boosting_time
 
 # Make a histogram from the score function (1D)
 def score_histo( bit, max_n_tree = None):
-    h = ROOT.TH2F("h", "h", 400, 20, 420, 400, 20, 420)
+    h = ROOT.TH2F("h", "h", 420, 0, 420, 420, 0, 420)
     for i in range(1, h.GetNbinsX()+1):
         for j in range(1, h.GetNbinsY()+1):
             h.SetBinContent( h.FindBin(h.GetXaxis().GetBinLowEdge(i), h.GetYaxis().GetBinLowEdge(j)), bit.predict([i, j], max_n_tree = max_n_tree))
@@ -121,17 +125,38 @@ model.score_theory.SetLineWidth(2)
 model.score_theory.SetLineStyle(7)
 model.score_theory.SetLineColor(ROOT.kGray+2)
 
+h_w     = ROOT.TH2F("h_w", "h_w", 420, 0, 420, 420, 0, 420)
+h_score = ROOT.TH2F("h_score", "h_score", 420, 0, 420, 420, 0, 420)
+for i_event in range(len(training_features)):
+    h_w.Fill( training_features[i_event][0], training_features[i_event][1], training_weights[i_event] )
+    h_score.Fill( training_features[i_event][0], training_features[i_event][1], training_diff_weights[i_event] )
+
+h_score.Divide(h_w)
+h_score.Draw("COLZ")
+c1.Print(os.path.join(plot_directory, "score_sim.png"))
+
 counter=0
 for n_tree in args.treeRange:
-
+#for n_tree in [500]:#args.treeRange:
     print "n_tree", n_tree
     fitted = score_histo( bit, max_n_tree = n_tree )
+    fitted.Draw("COLZ")
+    c1.Print(os.path.join(plot_directory, "bit_raw_%i.png"%n_tree))
     fitted.SetLineWidth(3)
     fitted.SetLineColor(ROOT.kBlue)
+    fitted.Smooth(100)
+    max_z = 1500
+    min_z = 200
+    Ncontours = 20
 
-    fitted.Smooth()
+    levels = range(min_z, max_z, (max_z-min_z)/Ncontours)
 
+    model.score_theory.Draw("COLZ")
+    c1.Print(os.path.join(plot_directory, "model_theory.png"))
+
+    model.score_theory.SetContour(len(levels), array.array('d', levels))
     model.score_theory.Draw("CONT3")
+    fitted.SetContour(len(levels), array.array('d', levels))
     fitted.DrawCopy("CONT1SAME")
 
     c1.SetLogy(0)
@@ -163,5 +188,5 @@ for n_tree in args.treeRange:
     for e in [".png",".pdf",".root"]:
         c1.Print(os.path.join(plot_directory, "score_boosted_nTreePlotted%i%s"%(n_tree,e)))
 
-
-copyIndexPHP(plot_directory)
+    copyIndexPHP(plot_directory)
+    syncer.sync()

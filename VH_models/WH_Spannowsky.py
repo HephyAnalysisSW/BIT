@@ -196,12 +196,13 @@ def getWeights(features, eft):
     M_lambda_dbaru = {}
     M_lambda_dubar = {}
     M_lambda_ubard = {}
+    patch = 1#./sqrt_2 #FIXME 
     for lambda_boson in [+1, -1, 0]:
         if abs(lambda_boson)==1:
             prefac = g**2/sqrt_2*m['W']/sqrt_s_hat 
-            M    = {tuple()   :     prefac*(1.+s_hat/m['W']**2*v**2/eft['Lambda']**2*(eft['cHQ3'] + eft['cHW'] - 1j*lambda_boson*eft['cHWtil'])),
-                   ('cHQ3',)  :     prefac*s_hat/m['W']**2*v**2/eft['Lambda']**2,
-                   ('cHW',)   :     prefac*s_hat/m['W']**2*v**2/eft['Lambda']**2,
+            M    = {tuple()   :   prefac*(1. + s_hat/m['W']**2*v**2/eft['Lambda']**2*(eft['cHQ3'] + eft['cHW'] - 1j*lambda_boson*eft['cHWtil'])),
+                   ('cHQ3',)  :   prefac*s_hat/m['W']**2*v**2/eft['Lambda']**2,
+                   ('cHW',)   :   prefac*s_hat/m['W']**2*v**2/eft['Lambda']**2,
                    ('cHWtil',): -1j*lambda_boson*prefac*s_hat/m['W']**2*v**2/eft['Lambda']**2,
                    }
 
@@ -221,7 +222,7 @@ def getWeights(features, eft):
             M_lambda_udbar[lambda_boson] = { k: -sin_theta/2.*M[k] for k in M.keys()} 
             M_lambda_dbaru[lambda_boson] = { k: M_lambda_udbar[lambda_boson][k] for k in M.keys()}
 
-            M_lambda_dubar[lambda_boson] = { k: -sin_theta/2*M[k] for k in M.keys()}
+            M_lambda_dubar[lambda_boson] = { k: -sin_theta/2.*M[k] for k in M.keys()}
             M_lambda_ubard[lambda_boson] = { k: M_lambda_udbar[lambda_boson][k] for k in M.keys()}
 
         dtau[lambda_boson]         = {}
@@ -289,8 +290,8 @@ def getWeights(features, eft):
 
 Nbins = 50
 plot_options = {
-    'sqrt_s_hat': {'binning':[Nbins,200,3000],      'tex':"#sqrt{#hat{s}}",},
-    'pT':         {'binning':[Nbins,200,1000],      'tex':"p_{T}",},
+    'sqrt_s_hat': {'binning':[40,650,2250],      'tex':"#sqrt{#hat{s}}",},
+    'pT':         {'binning':[35,300,1000],      'tex':"p_{T}",},
     'y':          {'binning':[Nbins,-4,4],          'tex':"y",},
     'cos_theta':  {'binning':[Nbins,-1,1],          'tex':"cos(#theta)",},
     'cos_theta_hat': {'binning':[Nbins,-1,1],       'tex':"cos(#hat{#theta})",},
@@ -307,14 +308,14 @@ plot_options = {
     'ftildeTTprime':{'binning':[Nbins,-1,1],        'tex':'#tilde{f}_{TT}',},
     }
 
-eft_plot_points = [ 
-    {'color':ROOT.kBlack, 'eft':sm, 'tex':"SM"},
-    {'color':ROOT.kBlue+2,  'eft':make_eft(cHQ3=.1),  'tex':"c_{HQ}^{(3)}=0.1"},
-    {'color':ROOT.kBlue-4,  'eft':make_eft(cHQ3=-.1), 'tex':"c_{HQ}^{(3)}=-0.1"},
-    {'color':ROOT.kGreen+2,  'eft':make_eft(cHW=1),   'tex':"c_{HW}=1"},
-    {'color':ROOT.kGreen-4,  'eft':make_eft(cHW=-1),  'tex':"c_{HW}=-1"},
-    {'color':ROOT.kMagenta+2,  'eft':make_eft(cHWtil=1),   'tex':"c_{H#tilde{W}}=1"},
-    {'color':ROOT.kMagenta-4,  'eft':make_eft(cHWtil=-1),  'tex':"c_{H#tilde{W}}=-1"},
+eft_plot_points = [
+    {'color':ROOT.kBlack,       'eft':sm, 'tex':"SM"},
+    {'color':ROOT.kBlue+2,      'eft':make_eft(cHQ3=.05),  'tex':"c_{HQ}^{(3)}=0.05"},
+    {'color':ROOT.kBlue-4,      'eft':make_eft(cHQ3=-.05), 'tex':"c_{HQ}^{(3)}=-0.05"},
+    {'color':ROOT.kGreen+2,     'eft':make_eft(cHW=0.5),   'tex':"c_{HW}=0.5"},
+    {'color':ROOT.kGreen-4,     'eft':make_eft(cHW=-0.5),  'tex':"c_{HW}=-0.5"},
+    {'color':ROOT.kMagenta+2,   'eft':make_eft(cHWtil=0.5),   'tex':"c_{H#tilde{W}}=0.5"},
+    {'color':ROOT.kMagenta-4,   'eft':make_eft(cHWtil=-0.5),  'tex':"c_{H#tilde{W}}=-0.5"},
 ]
 
 bit_cfg = {der: {'n_trees': 250,
