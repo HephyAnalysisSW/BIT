@@ -210,12 +210,14 @@ def getWeights(features, eft):
                 else:
                     prefac   = -sin_theta*g*gZsigma[sigma_quark][pdg_quark]/(2*cw)
                     M_lambda_sigma_qqbar[lambda_boson] = \
-                           {tuple()   : prefac*(1.+v**2/eft['Lambda']**2*(4*c2w_factor*eft['cHW']+g*t3q*eft['cHQ3']/(cw*gZsigma[sigma_quark][pdg_quark])*(s_hat/m['Z']**2-0.5))),
+                           {tuple()   : prefac*(1.+v**2/eft['Lambda']**2*(4*c2w_factor*eft['cHW']+g*t3q*eft['cHQ3']/(cw*gZsigma[sigma_quark][pdg_quark])*(s_hat/m['Z']**2-0.5))), #orig
+                           ('cHW',)   : prefac*    v**2/eft['Lambda']**2*4*c2w_factor, #orig
                            ('cHQ3',)  : prefac*    v**2/eft['Lambda']**2*g*t3q/(cw*gZsigma[sigma_quark][pdg_quark])*(s_hat/m['Z']**2-0.5),
-                           ('cHW',)   : prefac*    v**2/eft['Lambda']**2*4*c2w_factor,
                            ('cHWtil',): np.zeros(N_events),
                             }
                     M_lambda_sigma_qbarq[lambda_boson] = M_lambda_sigma_qqbar[lambda_boson]
+                           #{tuple()   : prefac*(1.+v**2/eft['Lambda']**2*(c2w_factor*eft['cHW']+g*t3q*eft['cHQ3']/(cw*gZsigma[sigma_quark][pdg_quark])*(s_hat/m['Z']**2-0.5))),#suman patch
+                           #('cHW',)   : prefac*    v**2/eft['Lambda']**2*c2w_factor, #suman patch
 
                 dtau[lambda_boson] = {}
                 dtau_flipped[lambda_boson] = {}

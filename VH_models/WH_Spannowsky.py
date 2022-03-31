@@ -213,9 +213,11 @@ def getWeights(features, eft):
             M_lambda_ubard[lambda_boson] =  { k:   (1+lambda_boson*cos_theta)/sqrt(2.)*M[k] for k in M.keys()}
         else:
             prefac = g**2/sqrt_2
-            M = {tuple() :     prefac*(1.+2*v**2/eft['Lambda']**2*(2*eft['cHW']+eft['cHQ3']*(-.5+s_hat/(2*m['W']**2)))),
+            #M = {tuple() :     prefac*(1.+2*v**2/eft['Lambda']**2*(.5*eft['cHW']+eft['cHQ3']*(-.5+s_hat/(2*m['W']**2)))), # suman patch
+                #('cHW',) :     prefac*2*v**2/eft['Lambda']**2*.5, #suman patch
+            M = {tuple() :     prefac*(1.+2*v**2/eft['Lambda']**2*(2*eft['cHW']+eft['cHQ3']*(-.5+s_hat/(2*m['W']**2)))), #orig
                 ('cHQ3',):     prefac*2*v**2/eft['Lambda']**2*(-.5+s_hat/(2*m['W']**2)),
-                ('cHW',) :     prefac*2*v**2/eft['Lambda']**2*2,
+                ('cHW',) :     prefac*2*v**2/eft['Lambda']**2*2., #orig
                 ('cHWtil',):   np.zeros(N_events),
                     }
 

@@ -126,6 +126,10 @@ class BoostedInformationTree:
 
             # Add debug information on the first split    
             if debug:
+                #print "n_tree",n_tree
+                #root.print_tree()
+                #print 
+
                 self.debug_data.append( {
                     'split_i_feature': root.split_i_feature,
                     'split_value':     root.split_value,
