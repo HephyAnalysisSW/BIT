@@ -75,7 +75,7 @@ derivatives       = [tuple()] + first_derivatives + second_derivatives
 def make_eft(**kwargs):
     result = { key:val for key, val in default_eft_parameters.iteritems() }
     for key, val in kwargs.iteritems():
-        if not key in wilson_coefficients:
+        if not key in wilson_coefficients+["Lambda"]:
             raise RuntimeError ("Wilson coefficient not known.")
         else:
             result[key] = float(val)
@@ -303,12 +303,12 @@ eft_plot_points = [
     {'color':ROOT.kMagenta-4,   'eft':make_eft(cHWtil=-0.5),  'tex':"c_{H#tilde{W}}=-0.5"},
 ]
 
-bit_cfg = {der: {'n_trees': 250,
+bit_cfg = {der: {'n_trees': 300,
                  'max_depth': 4,
                  'learning_rate': 0.20,
                  'min_size': 30,} for der in derivatives if der!=tuple() }
-bit_cfg[('cHQ3',)]['n_trees'] = 80
-bit_cfg[('cHQ3','cHQ3')]['n_trees'] = 80
+#bit_cfg[('cHQ3',)]['n_trees'] = 80
+#bit_cfg[('cHQ3','cHQ3')]['n_trees'] = 80
 
 def load(directory = '/groups/hephy/cms/robert.schoefbeck/BIT/models/', prefix = 'bit_ZH_Spannowsky_nTraining_2000000', derivatives=derivatives):
     import sys, os

@@ -75,7 +75,7 @@ derivatives       = [tuple()] + first_derivatives + second_derivatives
 def make_eft(**kwargs):
     result = { key:val for key, val in default_eft_parameters.iteritems() }
     for key, val in kwargs.iteritems():
-        if not key in wilson_coefficients:
+        if not key in wilson_coefficients+["Lambda"]:
             raise RuntimeError ("Wilson coefficient not known.")
         else:
             result[key] = float(val)

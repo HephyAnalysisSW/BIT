@@ -65,6 +65,7 @@ T3q = {1:-.5,    2:.5}
 
 # EFT settings, parameters, defaults
 wilson_coefficients    = ['cHW', 'cHWtil', 'cHQ3']
+
 default_eft_parameters = { 'Lambda':1000. }
 default_eft_parameters.update( {var:0. for var in wilson_coefficients} )
 
@@ -72,10 +73,13 @@ first_derivatives = [('cHQ3',), ('cHW',), ('cHWtil',)]
 second_derivatives= [('cHQ3','cHQ3'), ('cHW','cHW'), ('cHWtil', 'cHWtil'), ('cHQ3','cHW'), ('cHQ3','cHWtil'), ('cHW', 'cHWtil'), ]
 derivatives       = [tuple()] + first_derivatives + second_derivatives
 
+# minimum transverse Z mass in this model
+pT_min = 200
+
 def make_eft(**kwargs):
     result = { key:val for key, val in default_eft_parameters.iteritems() }
     for key, val in kwargs.iteritems():
-        if not key in wilson_coefficients:
+        if not key in wilson_coefficients+["Lambda"]:
             raise RuntimeError ("Wilson coefficient not known.")
         else:
             result[key] = float(val)
@@ -87,24 +91,24 @@ sm         = make_eft()
 feature_names =  ['sqrt_s_hat', 'pT', 'y', 'cos_theta', 'phi_hat', 'cos_theta_hat', 
                   'fLL', 'f1TT', 'f2TT' , 'f1LT', 'f2LT', 'f1tildeLT', 'f2tildeLT', 'fTTprime', 'ftildeTTprime']
 
-def make_s_cos_theta( N_events, pT_min = 300):
+def make_s_cos_theta( N_events, pT_min = pT_min):
 
     # theta of boson in the qq restframe
     cos_theta = np.random.uniform(-1,1,N_events)
 
     # kinematics
-    #s_hat_min   = (m['H'] + m['W'])**2
-    s_hat_min   = (2*pT_min)**2 #minimum s_hat for sin(theta)=1
+    s_hat_min   = (m['H'] + m['Z'])**2
+    #s_hat_min   = (2*pT_min)**2 #minimum s_hat for sin(theta)=1
     s_hat       = s_hat_min+(s_hat_max-s_hat_min)*np.random.uniform(0, s_hat_clip, N_events)
     sqrt_s_hat  = np.sqrt(s_hat)
 
-    pT          = 0.5*sqrt_s_hat*np.sqrt(1-cos_theta**2)
+    #pT          = 0.5*sqrt_s_hat*np.sqrt(1-cos_theta**2)
+    pT          = np.sqrt(0.25*(1-cos_theta**2)/s_hat*(s_hat-(m['H']+m['Z'])**2)*(s_hat-(m['H']-m['Z'])**2))
 
     return s_hat, sqrt_s_hat, pT, cos_theta
 
 # qq -> ZH
 def getEvents(N_events_requested):
-    pT_min = 300
 
     # correct efficiency of pt cut
     _, _, pT, _ = make_s_cos_theta( N_events_requested, pT_min = pT_min)
@@ -285,12 +289,14 @@ def getWeights(features, eft):
     dsigmaZH  = {k:np.real(dsigmaZH[k])  for k in derivatives}
     return dsigmaZH
 
-Nbins = 50
+Nbins = 20
 plot_options = {
-    'sqrt_s_hat': {'binning':[40,650,2250],      'tex':"#sqrt{#hat{s}}",},
-    'pT':         {'binning':[35,300,1000],      'tex':"p_{T}",},
+    #'sqrt_s_hat': {'binning':[40,650,2250],      'tex':"#sqrt{#hat{s}}",},
+    #'pT':         {'binning':[35,300,1000],      'tex':"p_{T}",},
+    'sqrt_s_hat': {'binning':[30,0,2500],      'tex':"#sqrt{#hat{s}}",},
+    'pT':         {'binning':[30,200,700],      'tex':"p_{T,Z}",},
     'y':          {'binning':[Nbins,-4,4],          'tex':"y",},
-    'cos_theta':  {'binning':[Nbins,-1,1],          'tex':"cos(#theta)",},
+    'cos_theta':  {'binning':[Nbins,-1,1],          'tex':"cos(#Theta)",},
     'cos_theta_hat': {'binning':[Nbins,-1,1],       'tex':"cos(#hat{#theta})",},
     'phi_hat':    {'binning':[Nbins,-pi,pi],        'tex':"#hat{#phi}",},
     'fLL'         : {'binning':[Nbins,0,1],        'tex':'f_{LL}'          ,},
@@ -306,22 +312,22 @@ plot_options = {
 
 eft_plot_points = [
     {'color':ROOT.kBlack,       'eft':sm, 'tex':"SM"},
-    {'color':ROOT.kBlue+2,      'eft':make_eft(cHQ3=.05),  'tex':"c_{HQ}^{(3)}=0.05"},
-    {'color':ROOT.kBlue-4,      'eft':make_eft(cHQ3=-.05), 'tex':"c_{HQ}^{(3)}=-0.05"},
-    {'color':ROOT.kGreen+2,     'eft':make_eft(cHW=0.5),   'tex':"c_{HW}=0.5"},
-    {'color':ROOT.kGreen-4,     'eft':make_eft(cHW=-0.5),  'tex':"c_{HW}=-0.5"},
-    {'color':ROOT.kMagenta+2,   'eft':make_eft(cHWtil=0.5),   'tex':"c_{H#tilde{W}}=0.5"},
-    {'color':ROOT.kMagenta-4,   'eft':make_eft(cHWtil=-0.5),  'tex':"c_{H#tilde{W}}=-0.5"},
+    {'color':ROOT.kBlue+2,      'eft':make_eft(cHQ3 = .02),  'tex':"c_{HQ}^{(3)} = 0.03"},
+    {'color':ROOT.kBlue-4,      'eft':make_eft(cHQ3 = -.02), 'tex':"c_{HQ}^{(3)} = -0.03"},
+    {'color':ROOT.kGreen+2,     'eft':make_eft(cHW = 0.3),   'tex':"c_{HW} = 0.3"},
+    {'color':ROOT.kGreen-4,     'eft':make_eft(cHW = -0.3),  'tex':"c_{HW} = -0.3"},
+    {'color':ROOT.kMagenta+2,   'eft':make_eft(cHWtil = 0.3),   'tex':"c_{H#tilde{W}} = 0.3"},
+    {'color':ROOT.kMagenta-4,   'eft':make_eft(cHWtil = -0.3),  'tex':"c_{H#tilde{W}} = -0.3"},
 ]
 
 bit_cfg = {der: {'n_trees': 250,
                  'max_depth': 4,
                  'learning_rate': 0.20,
-                 'min_size': 30,} for der in derivatives if der!=tuple() }
-bit_cfg[('cHQ3',)]['n_trees'] = 80
-bit_cfg[('cHQ3','cHQ3')]['n_trees'] = 80
+                 'min_size': 15,} for der in derivatives if der!=tuple() }
+#bit_cfg[('cHQ3',)]['n_trees'] = 80
+#bit_cfg[('cHQ3','cHQ3')]['n_trees'] = 80
 
-def load(directory = '/groups/hephy/cms/robert.schoefbeck/BIT/models/', prefix = 'bit_ZH_Spannowsky_nTraining_2000000', derivatives=derivatives):
+def load(directory = '/groups/hephy/cms/robert.schoefbeck/BIT/models/', prefix = 'bit_ZH_Nakamura_nTraining_5000000', derivatives=derivatives):
     import sys, os
     sys.path.insert(0,os.path.expandvars("$CMSSW_BASE/src/BIT"))
     from BoostedInformationTree import BoostedInformationTree
