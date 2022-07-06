@@ -252,8 +252,7 @@ if __name__=='__main__':
     model = VH_models.ZH_Nakamura_debug
 
     coefficients = sorted(['cHW', 'cHWtil', 'cHQ3'])
-
-    nTraining   = 50000
+    nTraining    = 50000
 
     features          = model.getEvents(nTraining)
     training_weights  = model.getWeights(features, eft=model.default_eft_parameters)
@@ -285,5 +284,3 @@ if __name__=='__main__':
                       base_points = base_points,
                       feature_names = model.feature_names,
                     )
-
-   
