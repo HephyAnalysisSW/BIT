@@ -324,8 +324,10 @@ bit_cfg = {der: {'n_trees': 250,
                  'max_depth': 4,
                  'learning_rate': 0.20,
                  'min_size': 15,} for der in derivatives if der!=tuple() }
-#bit_cfg[('cHQ3',)]['n_trees'] = 80
-#bit_cfg[('cHQ3','cHQ3')]['n_trees'] = 80
+multi_bit_cfg = {'n_trees': 250,
+                 'max_depth': 4,
+                 'learning_rate': 0.20,
+                 'min_size': 15 }
 
 def load(directory = '/groups/hephy/cms/robert.schoefbeck/BIT/models/', prefix = 'bit_ZH_Nakamura_nTraining_5000000', derivatives=derivatives):
     import sys, os

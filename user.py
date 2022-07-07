@@ -3,6 +3,7 @@ import os
 if os.environ['USER'] in ['robert.schoefbeck']:
     plot_directory                      = "/groups/hephy/cms/robert.schoefbeck/www/BIT/"
     model_directory                     = "/groups/hephy/cms/robert.schoefbeck/BIT/models/"
+    data_directory                      = "/groups/hephy/cms/robert.schoefbeck/BIT/data/"
 elif os.environ['USER'] in ['rosmarie.schoefbeck']:
     plot_directory                      = "/groups/hephy/cms/rosmarie.schoefbeck/www/BIT/"
 elif os.environ['USER'] in ['nikolaus.frohner']:

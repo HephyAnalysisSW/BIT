@@ -237,9 +237,13 @@ class ResultNode:
         self.predicted_coefficients = predicted_coefficients
         self.derivatives            = derivatives
 
+    @staticmethod
+    def prefac(der):
+        return (0.5 if (len(der)==2 and len(set(der))==1) else 1. )
+
     def print_tree(self, _depth=0):
         #poly_str = "".join(["*".join(["{:+.3e}".format(self.predicted_coefficients[i_der])] + list(self.derivatives[i_der]) ) for i_der in range(len(self.derivatives))])
-        poly_str = "".join(["*".join(["{:+.3e}".format(self.predicted_coefficients[i_der]/self.predicted_coefficients[0])] + list(self.derivatives[i_der]) ) for i_der in range(len(self.derivatives))])
+        poly_str = "".join(["*".join(["{:+.3e}".format(self.prefac(der)*self.predicted_coefficients[i_der]/self.predicted_coefficients[0])] + list(self.derivatives[i_der]) ) for i_der, der in enumerate(self.derivatives)])
         print('%s r = %s' % ((_depth)*' ', poly_str) )
 
     def get_list(self):
@@ -249,9 +253,13 @@ class ResultNode:
 if __name__=='__main__':
 
     import VH_models
-    model = VH_models.ZH_Nakamura_debug
 
-    coefficients = sorted(['cHW', 'cHWtil', 'cHQ3'])
+    #model = VH_models.ZH_Nakamura_debug
+    #coefficients = sorted(['cHW', 'cHWtil', 'cHQ3'])
+    #nTraining    = 50000
+
+    model = VH_models.analytic
+    coefficients = sorted(['theta1'])
     nTraining    = 50000
 
     features          = model.getEvents(nTraining)
@@ -265,13 +273,9 @@ if __name__=='__main__':
 
     print "nEvents: %i Weights: %s" %( len(features), [ k for k in training_weights.keys() if k!=tuple()] )
 
-    base_points = [
-        {'cHW':1},
-        {'cHW':2},
-        {'cHWtil':1},
-        {'cHWtil':2},
-        {'cHW':1, 'cHWtil':1},
-         ]
+    base_points = []
+    for comb in list(itertools.combinations_with_replacement(coefficients,1))+list(itertools.combinations_with_replacement(coefficients,2)):
+        base_points.append( {c:comb.count(c) for c in coefficients} )
 
     # cfg & preparation for node split
     min_size    = 50
