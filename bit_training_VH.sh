@@ -39,7 +39,7 @@ python bit_training_VH.py --plot_directory BIT_VH_12 --model ZH_Nakamura --nTrai
 #python bit_training_VH.py --plot_directory BIT_VH_12 --model ZH_Nakamura --nTraining 5000000 --derivative cHQ3 cHQ3
 #python bit_training_VH.py --plot_directory BIT_VH_12 --model ZH_Nakamura --nTraining 5000000 --derivative cHQ3 cHW
 #python bit_training_VH.py --plot_directory BIT_VH_12 --model ZH_Nakamura --nTraining 5000000 --derivative cHQ3 cHWtil
-
+#
 #python bit_training_VH.py --plot_directory BIT_VH_12 --prefix MD3 --max_depth 3 --model ZH_Nakamura --nTraining 2000000 --derivative cHW 
 #python bit_training_VH.py --plot_directory BIT_VH_12 --prefix MD3 --max_depth 3 --model ZH_Nakamura --nTraining 2000000 --derivative cHW cHW
 #python bit_training_VH.py --plot_directory BIT_VH_12 --prefix MD3 --max_depth 3 --model ZH_Nakamura --nTraining 2000000 --derivative cHW cHWtil

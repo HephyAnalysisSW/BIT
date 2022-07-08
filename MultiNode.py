@@ -6,12 +6,13 @@ from math import sqrt
 import itertools
 
 default_cfg = {
-    "max_depth": 4,
-    "min_size" : 50,
-    "max_n_split": -1,
-    "positive_score": False,
-    "base_points":None,
-    "feature_names":None,
+    "max_depth":        4,
+    "min_size" :        50,
+    "max_n_split":      -1,
+    "positive_score":   False,
+    "base_points":      None,
+    "feature_names":    None,
+    "positive":         False,
 }
 
 class MultiNode:
@@ -40,25 +41,36 @@ class MultiNode:
             self.training_weights   = {tuple(sorted(key)):val for key,val in training_weights.iteritems()}
 
             assert kwargs.has_key('base_points') and kwargs['base_points'] is not None, "Must provide base_points in cfg"
-            # precoumputed base_point_const
 
+            # precoumputed base_point_const
             self.base_points      = kwargs['base_points']
-            self.base_point_const = np.array([[ reduce(operator.mul, [point[coeff] if point.has_key(coeff) else 0 for coeff in der ], 1) for der in self.derivatives] for point in self.base_points])
+            self.base_point_const = np.array([[ reduce(operator.mul, [point[coeff] if point.has_key(coeff) else 0 for coeff in der ], 1) for der in self.derivatives] for point in self.base_points]).astype('float')
             for i_der, der in enumerate(self.derivatives):
                 if not (len(der)==2 and der[0]==der[1]): continue
                 for i_point in range(len(self.base_points)):
                     self.base_point_const[i_point][i_der]/=2.
-            self.cfg['base_point_const'] = self.base_point_const
+
+            assert np.linalg.matrix_rank(self.base_point_const) == self.base_point_const.shape[0], \
+                   "Base points not linearly independent! Found rank %i for %i base_points" %( np.linalg.matrix_rank(self.base_point_const), self.base_point_const.shape[0])
+
+            # make another version of base_point_const that contains the [1,0,0,...] vector -> used for testing positivity of the zeroth coefficient
+            const = np.zeros((1,len(self.derivatives)))
+            const[0,0]=1
+            self.base_point_const_for_pos = np.concatenate((const, self.base_point_const))
+
+            self.cfg['base_point_const']         = self.base_point_const
+            self.cfg['base_point_const_for_pos'] = self.base_point_const_for_pos
             self.cfg['derivatives'] = self.derivatives 
             self.cfg['feature_names'] = None if not kwargs.has_key('feature_names') else kwargs['feature_names'] 
             self.feature_names      = self.cfg['feature_names']
             self.training_weights   = np.array([training_weights[der] for der in self.derivatives]).transpose().astype('float')
         # inside tree
         else:
-            self.training_weights   = training_weights
-            self.base_point_const   = kwargs['base_point_const']
-            self.derivatives        = kwargs['derivatives']
-            self.feature_names      = kwargs['feature_names']
+            self.training_weights           = training_weights
+            self.base_point_const           = kwargs['base_point_const']
+            self.base_point_const_for_pos   = kwargs['base_point_const_for_pos']
+            self.derivatives                = kwargs['derivatives']
+            self.feature_names              = kwargs['feature_names']
 
         # keep track of recursion depth
         self._depth             = _depth
@@ -107,11 +119,24 @@ class MultiNode:
                 plateau_and_split_range_mask[0:self.min_size-1] = False
                 plateau_and_split_range_mask[-self.min_size+1:] = False
             plateau_and_split_range_mask &= (np.diff(feature_values[feature_sorted_indices]) != 0)
-            plateau_and_split_range_mask = plateau_and_split_range_mask.astype(int)
 
             total_weight_sum         = sorted_weight_sums[-1]
             sorted_weight_sums       = sorted_weight_sums[0:-1]
             sorted_weight_sums_right = total_weight_sum-sorted_weight_sums
+
+            # mask negative definite splits
+            if self.cfg['positive']:
+                pos       = np.apply_along_axis(all, 1, np.dot(sorted_weight_sums,self.base_point_const_for_pos.transpose())>=0)
+                pos_right = np.apply_along_axis(all, 1, np.dot(sorted_weight_sums_right,self.base_point_const_for_pos.transpose())>=0)
+
+                all_pos = np.concatenate((pos, pos_right))
+                #if not np.all(all_pos):
+                #    print ("Warning! Found negative node splits {:.2%}".format(1-float(np.count_nonzero(all_pos))/len(all_pos)) )
+
+                plateau_and_split_range_mask &= pos
+                plateau_and_split_range_mask &= pos_right
+
+            plateau_and_split_range_mask = plateau_and_split_range_mask.astype(int)
 
             neg_loss_gains = np.sum(np.dot( sorted_weight_sums, self.base_point_const.transpose())**2,axis=1)/sorted_weight_sums[:,0]
             neg_loss_gains+= np.sum(np.dot( sorted_weight_sums_right, self.base_point_const.transpose())**2,axis=1)/sorted_weight_sums_right[:,0]

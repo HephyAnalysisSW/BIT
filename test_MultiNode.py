@@ -10,6 +10,7 @@ import os, sys
 from math import log, exp, sin, cos, sqrt, pi
 import copy
 import operator
+import itertools
 
 # RootTools
 from RootTools.core.standard   import *
@@ -30,7 +31,7 @@ argParser.add_argument("--plot_directory",     action="store",      default="mBI
 argParser.add_argument("--model",              action="store",      default="ZH_Nakamura",   help="plot sub-directory")
 argParser.add_argument("--prefix",             action="store",      default=None, type=str,  help="prefix")
 argParser.add_argument("--nTraining",          action="store",      default=50000,        type=int,  help="number of training events")
-argParser.add_argument("--derivatives",        action="store",      default=['cHW', 'cHWtil'],  nargs="*", help="Maximum number of splits in node split")
+argParser.add_argument("--derivatives",        action="store",      default=['cHW', 'cHWtil', 'cHQ3'],  nargs="*", help="Maximum number of splits in node split")
 argParser.add_argument('--overwrite',          action='store_true', help="Overwrite output?")
 argParser.add_argument('--debug',              action='store_true', help="Make debug plots?")
 argParser.add_argument('--feature_plots',      action='store_true', help="Feature plots?")
@@ -112,19 +113,20 @@ max_n_split = -1
 size        = len(features)
 training_weights = np.array([training_weights[der] for der in model.derivatives]).transpose()
 
-base_points = [ 
-    {'cHW':1},
-    {'cHW':2},
-    {'cHWtil':1},
-    {'cHWtil':2},
-    {'cHW':1, 'cHWtil':1},
-     ]
+base_points = []
+for comb in list(itertools.combinations_with_replacement(args.derivatives,1))+list(itertools.combinations_with_replacement(args.derivatives,2)):
+    base_points.append( {c:comb.count(c) for c in args.derivatives} )
 
-base_point_const = np.array([[ reduce(operator.mul, [point[coeff] if point.has_key(coeff) else 0 for coeff in der ], 1) for der in model.derivatives] for point in base_points])
+base_point_const = np.array([[ reduce(operator.mul, [point[coeff] if point.has_key(coeff) else 0 for coeff in der ], 1) for der in model.derivatives] for point in base_points]).astype('float')
 for i_der, der in enumerate(model.derivatives):
     if not (len(der)==2 and der[0]==der[1]): continue 
     for i_point in range(len(base_points)):
-        base_point_const[i_point][i_der]/=2.
+        #print i_point, i_der, der, base_point_const[i_point][i_der], base_point_const[i_point][i_der]/2.
+        base_point_const[i_point][i_der] = base_point_const[i_point][i_der]/2.
+
+const = np.zeros((1,len(model.derivatives)))
+const[0,0]=1
+base_point_const_ = np.concatenate((const, base_point_const)) 
 
 # get_split_vectorized
 split_i_feature, split_value, split_gain, split_left_group = 0, -float('inf'), 0, None
@@ -154,11 +156,19 @@ for i_feature in range(len(features[0])):
         plateau_and_split_range_mask[0:min_size-1] = False
         plateau_and_split_range_mask[-min_size+1:] = False
     plateau_and_split_range_mask &= (np.diff(feature_values[feature_sorted_indices]) != 0)
-    plateau_and_split_range_mask = plateau_and_split_range_mask.astype(int)
 
     total_weight_sum         = sorted_weight_sums[-1]
     sorted_weight_sums       = sorted_weight_sums[0:-1]
     sorted_weight_sums_right = total_weight_sum-sorted_weight_sums
+
+    if True: # test positivity
+        pos       = np.apply_along_axis(all, 1, np.dot(sorted_weight_sums,base_point_const_.transpose())>=0)
+        pos_right = np.apply_along_axis(all, 1, np.dot(sorted_weight_sums_right,base_point_const_.transpose())>=0) 
+
+        plateau_and_split_range_mask &= pos 
+        plateau_and_split_range_mask &= pos_right 
+
+    plateau_and_split_range_mask = plateau_and_split_range_mask.astype(int)
 
     neg_loss_gains = np.sum(np.dot( sorted_weight_sums, base_point_const.transpose())**2,axis=1)/sorted_weight_sums[:,0]
     neg_loss_gains+= np.sum(np.dot( sorted_weight_sums_right, base_point_const.transpose())**2,axis=1)/sorted_weight_sums_right[:,0]

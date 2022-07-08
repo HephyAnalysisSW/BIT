@@ -194,10 +194,6 @@ if args.feature_plots and hasattr( model, "eft_plot_points"):
             #reweight_lin_sign = reweight_sign*reweight_lin
             sign_postfix    = " weighted with sgn(sin(2#theta)sin(2#hat{#theta}))"
 
-        print i_eft, eft_plot_point, "sm", eft_sm
-        print reweight
-        print
-
         for i_feature, feature in enumerate(feature_names):
             binning = model.plot_options[feature]['binning']
 
@@ -260,7 +256,7 @@ if bit is None or args.overwrite in ["all", "training"]:
             **model.multi_bit_cfg
                 )
 
-    bit.boost(debug=args.debug)
+    bit.boost()
     bit.save(filename)
     print ("Written %s"%( filename ))
 
