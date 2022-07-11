@@ -10,6 +10,7 @@ import ROOT
 import csv
 import os
 import array
+import random
 
 # EFT settings, parameters, defaults
 wilson_coefficients    = ['theta1']
@@ -36,26 +37,25 @@ sm         = make_eft()
 
 feature_names =  ['x']
 
-# qq -> ZH
 def getEvents(N_events_requested):
-
-    x = 0.5*np.ones(N_events_requested) 
-
-    return np.transpose(np.array( [x] ))
+    return np.array( [2*pi*random.uniform(0,1) for i in range(N_events_requested)] ).reshape(-1,1)
 
 def getWeights(features, eft):
 
-    #dsigma/dx = 1 + (1-theta1)**2 = 1 + 1 - 2*theta1 + theta1**2 = 2-2*theta1+theta1**2
-
-    weights = { tuple():     2*np.ones(len(features)),
-               ('theta1',): -2*np.ones(len(features)), 
-               ('theta1','theta1'): 2*np.ones(len(features)),
+    #dsigma/dx = (1+theta sin(x))**2, 2(1+theta*sin(x)) 
+    sinx = np.sin(features[:,0])
+    weights = { tuple():     (1+eft['theta1']*sinx)**2,
+               ('theta1',):  2*(1+eft['theta1']*sinx)*sinx, 
+               ('theta1','theta1'): 2*sinx**2,
     }
 
+    neg = np.random.choice([-1,1], len(features), p=[.1,.9]).astype('bool')
+    weights[()][neg]*=-1
+    weights[()][~neg]*=1/(.9*.8)
     return weights
 
 plot_options = {
-    'x': {'binning':[1,0,1],      'tex':"x",},
+    'x': {'binning':[100,0,2*pi],      'tex':"x",},
     }
 
 eft_plot_points = [
