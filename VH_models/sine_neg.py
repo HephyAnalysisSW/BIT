@@ -49,9 +49,16 @@ def getWeights(features, eft):
                ('theta1','theta1'): 2*sinx**2,
     }
 
-    neg = np.random.choice([-1,1], len(features), p=[.1,.9]).astype('bool')
-    weights[()][neg]*=-1
-    weights[()][~neg]*=1/(.9*.8)
+    tot_pos = np.sum(weights[()])
+
+    p = 0.2
+    pos = np.random.choice([0,1], len(features), p=[p,1-p]).astype('bool')
+    for k in weights.keys():
+        weights[k][~pos]*=-1
+    tot_neg = np.sum(weights[()])
+    for k in weights.keys():
+        weights[k][~pos]*= (tot_pos/tot_neg)
+
     return weights
 
 plot_options = {

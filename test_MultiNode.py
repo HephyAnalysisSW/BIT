@@ -31,9 +31,10 @@ argParser.add_argument("--plot_directory",     action="store",      default="mBI
 argParser.add_argument("--model",              action="store",      default="ZH_Nakamura",   help="plot sub-directory")
 argParser.add_argument("--prefix",             action="store",      default=None, type=str,  help="prefix")
 argParser.add_argument("--nTraining",          action="store",      default=50000,        type=int,  help="number of training events")
-argParser.add_argument("--derivatives",        action="store",      default=['cHW', 'cHWtil', 'cHQ3'],  nargs="*", help="Maximum number of splits in node split")
+argParser.add_argument("--coefficients",       action="store",      default=['cHW', 'cHWtil', 'cHQ3'],  nargs="*", help="Maximum number of splits in node split")
 argParser.add_argument('--overwrite',          action='store_true', help="Overwrite output?")
 argParser.add_argument('--debug',              action='store_true', help="Make debug plots?")
+argParser.add_argument('--positive',           action='store_true', help="positive?")
 argParser.add_argument('--feature_plots',      action='store_true', help="Feature plots?")
 
 args, extra = argParser.parse_known_args(sys.argv[1:])
@@ -71,9 +72,9 @@ for key, val in extra_args.iteritems():
 import VH_models
 model = getattr(VH_models, args.model)
 
-for derivative in model.derivatives:
-    if derivative != tuple():
-        model.bit_cfg[derivative].update( extra_args )
+#for derivative in model.derivatives:
+#    if derivative != tuple():
+#        model.multi_bit_cfg[derivative].update( extra_args )
 
 feature_names = model.feature_names
 
@@ -94,15 +95,15 @@ training_weights  = model.getWeights(features, eft=model.default_eft_parameters)
 print ("Created training data set of size %i" % len(features) )
 
 # reduce training weights to the dimensions we learn
-args.derivatives = sorted(args.derivatives)
+args.coefficients = sorted(args.coefficients)
 
 for key in training_weights.keys():
     if key==tuple(): continue
-    if not all( [ k in args.derivatives for k in key] ): 
+    if not all( [ k in args.coefficients for k in key] ): 
         del training_weights[key]
 
-model.first_derivatives  = filter( lambda der: all( [ c in args.derivatives for c in der ] ), model.first_derivatives )
-model.second_derivatives = filter( lambda der: all( [ c in args.derivatives for c in der ] ), model.second_derivatives )
+model.first_derivatives  = filter( lambda der: all( [ c in args.coefficients for c in der ] ), model.first_derivatives )
+model.second_derivatives = filter( lambda der: all( [ c in args.coefficients for c in der ] ), model.second_derivatives )
 model.derivatives = [tuple()] + model.first_derivatives + model.second_derivatives
 
 print "nEvents: %i Weights: %s" %( len(features), [ k for k in training_weights.keys() if k!=tuple()] )
@@ -110,12 +111,13 @@ print "nEvents: %i Weights: %s" %( len(features), [ k for k in training_weights.
 # cfg & preparation for node split
 min_size    = 50
 max_n_split = -1
+min_node_size_neg_adjust = True
 size        = len(features)
 training_weights = np.array([training_weights[der] for der in model.derivatives]).transpose()
 
 base_points = []
-for comb in list(itertools.combinations_with_replacement(args.derivatives,1))+list(itertools.combinations_with_replacement(args.derivatives,2)):
-    base_points.append( {c:comb.count(c) for c in args.derivatives} )
+for comb in list(itertools.combinations_with_replacement(args.coefficients,1))+list(itertools.combinations_with_replacement(args.coefficients,2)):
+    base_points.append( {c:comb.count(c) for c in args.coefficients} )
 
 base_point_const = np.array([[ reduce(operator.mul, [point[coeff] if point.has_key(coeff) else 0 for coeff in der ], 1) for der in model.derivatives] for point in base_points]).astype('float')
 for i_der, der in enumerate(model.derivatives):
@@ -161,20 +163,38 @@ for i_feature in range(len(features[0])):
     sorted_weight_sums       = sorted_weight_sums[0:-1]
     sorted_weight_sums_right = total_weight_sum-sorted_weight_sums
 
-    if True: # test positivity
+    if args.positive: # test positivity
         pos       = np.apply_along_axis(all, 1, np.dot(sorted_weight_sums,base_point_const_.transpose())>=0)
         pos_right = np.apply_along_axis(all, 1, np.dot(sorted_weight_sums_right,base_point_const_.transpose())>=0) 
 
-        plateau_and_split_range_mask &= pos 
-        plateau_and_split_range_mask &= pos_right 
-
-    plateau_and_split_range_mask = plateau_and_split_range_mask.astype(int)
+    # Never allow negative yields
+    plateau_and_split_range_mask &= (sorted_weight_sums[:,0]>0)
+    plateau_and_split_range_mask &= (sorted_weight_sums_right[:,0]>0)
 
     neg_loss_gains = np.sum(np.dot( sorted_weight_sums, base_point_const.transpose())**2,axis=1)/sorted_weight_sums[:,0]
     neg_loss_gains+= np.sum(np.dot( sorted_weight_sums_right, base_point_const.transpose())**2,axis=1)/sorted_weight_sums_right[:,0]
 
-    argmax_fi = np.argmax(np.nan_to_num(neg_loss_gains)*plateau_and_split_range_mask)
-    gain      =  neg_loss_gains[argmax_fi]
+    with np.errstate(divide='ignore'):
+        if min_node_size_neg_adjust>0:
+            # Defining the negative weight fraction as f=n^+/n^- the relative statistical MC uncertainty in a yield is 1/sqrt(n) sqrt(1+f)/sqrt(1-f). 
+            # The min node size should therefore be increased to (1+f)/(1-f)
+            sorted_pos_sums       = np.cumsum( (training_weights[:,0]>0).astype('int')[feature_sorted_indices])
+            total_pos_sum         = sorted_pos_sums[-1]
+            sorted_pos_sums       = sorted_pos_sums[0:-1]
+            sorted_pos_sums_right = total_pos_sum-sorted_pos_sums
+            sorted_neg_sum       = np.array(range(1, len(training_weights[:,0])))     - sorted_pos_sums
+            sorted_neg_sum_right = np.array(range(len(training_weights[:,0])-1,0,-1)) - sorted_pos_sums_right
+            f      = sorted_neg_sum/sorted_pos_sums.astype(float)
+            f_right= sorted_neg_sum_right/sorted_pos_sums_right.astype(float)
+
+            plateau_and_split_range_mask &= range(1, len(training_weights[:,0]))>(1+f)/(1-f)*min_size
+            plateau_and_split_range_mask &= np.array(range(len(training_weights[:,0])-1,0,-1)) >(1+f_right)/(1-f_right)*min_size
+
+    plateau_and_split_range_mask = plateau_and_split_range_mask.astype(int)
+
+    gain_masked = np.nan_to_num(neg_loss_gains)*plateau_and_split_range_mask
+    argmax_fi   = np.argmax(gain_masked)
+    gain        = gain_masked[argmax_fi]
 
     value = feature_values[feature_sorted_indices[argmax_fi]]
 

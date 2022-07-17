@@ -13,6 +13,7 @@ default_cfg = {
     "base_points":      None,
     "feature_names":    None,
     "positive":         False,
+    "min_node_size_neg_adjust": False,
 }
 
 class MultiNode:
@@ -100,7 +101,7 @@ class MultiNode:
             feature_values = self.features[:,i_feature]
 
             feature_sorted_indices = np.argsort(feature_values)
-            sorted_weight_sums     = np.cumsum(self.training_weights[feature_sorted_indices],axis=0) # FIXME cumsum does not respect max_n_split
+            sorted_weight_sums     = np.cumsum(self.training_weights[feature_sorted_indices],axis=0) # FIXME cumsum does not implement max_n_split -> inefficient?
  
             # respect min size for split
             if self.max_n_split<2:
@@ -138,26 +139,81 @@ class MultiNode:
 
             plateau_and_split_range_mask = plateau_and_split_range_mask.astype(int)
 
+            # Never allow negative yields
+            plateau_and_split_range_mask &= (sorted_weight_sums[:,0]>0)
+            plateau_and_split_range_mask &= (sorted_weight_sums_right[:,0]>0)
+
             neg_loss_gains = np.sum(np.dot( sorted_weight_sums, self.base_point_const.transpose())**2,axis=1)/sorted_weight_sums[:,0]
             neg_loss_gains+= np.sum(np.dot( sorted_weight_sums_right, self.base_point_const.transpose())**2,axis=1)/sorted_weight_sums_right[:,0]
 
-            argmax_fi = np.argmax(np.nan_to_num(neg_loss_gains)*plateau_and_split_range_mask)
-            gain      =  neg_loss_gains[argmax_fi]
+            with np.errstate(divide='ignore', invalid='ignore'):
+                if self.cfg['min_node_size_neg_adjust']:
+                    # Defining the negative weight fraction as f=n^+/n^- the relative statistical MC uncertainty in a yield is 1/sqrt(n) sqrt(1+f)/sqrt(1-f). 
+                    # The min node size should therefore be increased to (1+f)/(1-f)
+                    sorted_pos_sums       = np.cumsum( (self.training_weights[:,0]>0).astype('int')[feature_sorted_indices])
+                    total_pos_sum         = sorted_pos_sums[-1]
+                    sorted_pos_sums       = sorted_pos_sums[0:-1]
+                    sorted_pos_sums_right = total_pos_sum-sorted_pos_sums
+                    sorted_neg_sum       = np.array(range(1, len(self.training_weights[:,0])))     - sorted_pos_sums
+                    sorted_neg_sum_right = np.array(range(len(self.training_weights[:,0])-1,0,-1)) - sorted_pos_sums_right
+                    f      = sorted_neg_sum/sorted_pos_sums.astype(float)
+                    f_right= sorted_neg_sum_right/sorted_pos_sums_right.astype(float)
 
+                    plateau_and_split_range_mask &= range(1, len(self.training_weights[:,0]))>(1+f)/(1-f)*self.min_size
+                    plateau_and_split_range_mask &= np.array(range(len(self.training_weights[:,0])-1,0,-1)) >(1+f_right)/(1-f_right)*self.min_size
+
+            gain_masked = np.nan_to_num(neg_loss_gains)*plateau_and_split_range_mask
+            argmax_fi   = np.argmax(gain_masked)
+            gain        = gain_masked[argmax_fi]
+
+            #argmax_fi   = np.argmax(np.nan_to_num(neg_loss_gains)*plateau_and_split_range_mask)
+            #gain        = neg_loss_gains[argmax_fi]
+            
             value = feature_values[feature_sorted_indices[argmax_fi]]
 
+            debug_self_split_gain = self.split_gain
             if gain > self.split_gain: 
                 self.split_i_feature = i_feature
                 self.split_value     = value
                 self.split_gain      = gain
 
+            if np.count_nonzero(self.features[:,self.split_i_feature]<=self.split_value) == 1: #self.split_value <= 3.26e-05:
+                print "sorted_weight_sums[:,0]      ", sorted_weight_sums[:,0]
+                print "sorted_weight_sums_right[:,0]", sorted_weight_sums_right[:,0]
+                print "plateau_and_split_range_mask", plateau_and_split_range_mask
+                print "neg_loss_gains left", np.sum(np.dot( sorted_weight_sums, self.base_point_const.transpose())**2,axis=1)/sorted_weight_sums[:,0] 
+                print "neg_loss_gains right", np.sum(np.dot( sorted_weight_sums_right, self.base_point_const.transpose())**2,axis=1)/sorted_weight_sums_right[:,0]
+                print "neg_loss_gains", neg_loss_gains
+                print "np.nan_to_num(neg_loss_gains)", np.nan_to_num(neg_loss_gains)
+                print "np.nan_to_num(neg_loss_gains)*plateau_and_split_range_mask", np.nan_to_num(neg_loss_gains)*plateau_and_split_range_mask
+                print "argmax_fi", np.argmax(np.nan_to_num(neg_loss_gains)*plateau_and_split_range_mask) 
+                print "gain", gain 
+                print "found split?", gain > debug_self_split_gain, "gain", gain, "self.split_gain (before)",debug_self_split_gain, "self.split_gain(after)",self.split_gain
+                print "self.split_left_group", self.features[:,self.split_i_feature]<=self.split_value if not  np.isnan(self.split_value) else np.ones(self.size, dtype='bool')
+                print "non_zero", np.count_nonzero(self.features[:,self.split_i_feature]<=self.split_value if not  np.isnan(self.split_value) else np.ones(self.size, dtype='bool'))
+                print
+                assert False, "single-entry node!!"
+
         assert not np.isnan(self.split_value)
 
-        #print self.split_i_feature, self.split_value, self.split_gain
         self.split_left_group = self.features[:,self.split_i_feature]<=self.split_value if not  np.isnan(self.split_value) else np.ones(self.size, dtype='bool')
 
-    def predict_coefficients( self, group ):
+    def coefficient_sum( self, group ):
         return np.sum(self.training_weights[group],axis=0)
+
+    def negative_fraction( self, group ):
+        ''' lambda ~ omega*n = omega*(n^+ - n^-) -> this function returns ~ n^+/n^-
+        '''
+        neg = float(np.count_nonzero(self.training_weights[group][:,0]<0))
+        return neg/( len(group) - neg )
+
+    # everything we want to store in the terminal nodes
+    def __store( self, group ):
+        return {
+            'size': np.count_nonzero(group),
+            'coefficient_sum': self.coefficient_sum(group),
+            'f'   : self.negative_fraction(group), 
+            }
 
     # Create child splits for a node or make terminal
     def split(self, _depth=0):
@@ -171,8 +227,8 @@ class MultiNode:
             #print ("Choice2", _depth, result_func(self.split_left_group), result_func(~self.split_left_group) )
             # The split was good, but we stop splitting further. Put everything in the left node! 
             self.split_value = float('inf')
-            self.left        = ResultNode(self.predict_coefficients(np.ones(self.size,dtype=bool)),derivatives=self.derivatives)
-            self.right       = ResultNode(self.predict_coefficients(np.zeros(self.size,dtype=bool)),derivatives=self.derivatives)
+            self.left        = ResultNode(derivatives=self.derivatives, **self.__store(np.ones(self.size,dtype=bool)))
+            self.right       = ResultNode(derivatives=self.derivatives, **self.__store(np.zeros(self.size,dtype=bool)))
             # The split was good, but we stop splitting further. Put the result of the split in the left/right boxes.
             #self.left, self.right = ResultNode(**{val:func(self.split_left_group) for val, func in result_funcs.iteritems()}), ResultNode(**{val:func(~self.split_left_group) for val, func in result_funcs.iteritems()})
             return
@@ -180,7 +236,7 @@ class MultiNode:
         if np.count_nonzero(self.split_left_group) < 2*self.min_size:
             #print ("Choice3", _depth, result_func(self.split_left_group) )
             # Too few events in the left box. We stop.
-            self.left             = ResultNode(self.predict_coefficients(self.split_left_group),derivatives=self.derivatives)
+            self.left             = ResultNode(derivatives=self.derivatives, **self.__store(self.split_left_group) )
         else:
             #print ("Choice4", _depth )
             # Continue splitting left box.
@@ -189,11 +245,11 @@ class MultiNode:
         if np.count_nonzero(~self.split_left_group) < 2*self.min_size:
             #print ("Choice5", _depth, result_func(~self.split_left_group) )
             # Too few events in the right box. We stop.
-            self.right            = ResultNode(self.predict_coefficients(~self.split_left_group),derivatives=self.derivatives)
+            self.right            = ResultNode(derivatives=self.derivatives, **self.__store(~self.split_left_group) )
         else:
             #print ("Choice6", _depth  )
             # Continue splitting right box. 
-            self.right            = MultiNode(self.features[~self.split_left_group], training_weights = self.training_weights[~self.split_left_group], _depth=self._depth+1, **self.cfg)
+            self.right            = MultiNode( self.features[~self.split_left_group], training_weights = self.training_weights[~self.split_left_group], _depth=self._depth+1, **self.cfg)
 
     # Prediction    
     def predict( self, features):
@@ -201,7 +257,7 @@ class MultiNode:
         '''
         node = self.left if features[self.split_i_feature]<=self.split_value else self.right
         if isinstance(node, ResultNode):
-            return node.predicted_coefficients 
+            return node.coefficient_sum 
         else:
             return node.predict(features)
 
@@ -213,7 +269,7 @@ class MultiNode:
 
         def emit_expressions_with_predictions(node, logical_expression):
             if isinstance(node, ResultNode):
-                emmitted_expressions_with_predictions.append((logical_expression, node.predicted_coefficients))
+                emmitted_expressions_with_predictions.append((logical_expression, node.coefficient_sum))
             else:
                 if node == self:
                     prepend = ""
@@ -258,22 +314,27 @@ class MultiNode:
 class ResultNode:
     ''' Simple helper class to store result value.
     '''
-    def __init__( self, predicted_coefficients, derivatives=None):
-        self.predicted_coefficients = predicted_coefficients
-        self.derivatives            = derivatives
+    def __init__( self, derivatives=None, **kwargs):
+        for k, v in kwargs.iteritems():
+            setattr( self, k, v)
+        self.derivatives     = derivatives
 
     @staticmethod
     def prefac(der):
         return (0.5 if (len(der)==2 and len(set(der))==1) else 1. )
 
     def print_tree(self, _depth=0):
-        #poly_str = "".join(["*".join(["{:+.3e}".format(self.predicted_coefficients[i_der])] + list(self.derivatives[i_der]) ) for i_der in range(len(self.derivatives))])
-        poly_str = "".join(["*".join(["{:+.3e}".format(self.prefac(der)*self.predicted_coefficients[i_der]/self.predicted_coefficients[0])] + list(self.derivatives[i_der]) ) for i_der, der in enumerate(self.derivatives)])
-        print('%s r = %s' % ((_depth)*' ', poly_str) )
+        r_poly_str = "".join(["*".join(["{:+.2e}".format(self.prefac(der)*self.coefficient_sum[i_der]/self.coefficient_sum[0])] + list(self.derivatives[i_der]) ) for i_der, der in enumerate(self.derivatives)])
+        c_poly_str = "".join(["*".join(["{:+.2e}".format(self.prefac(der)*self.coefficient_sum[i_der])] + list(self.derivatives[i_der]) ) for i_der, der in enumerate(self.derivatives)])
+        #f_poly_str = " f={:3.0%} ".format(self.f)
+
+        #print_string = '%s(%5i) r = %s   c = %s' % ((_depth)*' ', self.size, r_poly_str, c_poly_str)
+        print_string = '%s(%6i, unc=%1.3f) r = %s   c = %s' % ((_depth)*' ', self.size, 1./sqrt(self.size)*sqrt((1+self.f)/(1-self.f)), r_poly_str, c_poly_str)
+        print(print_string)
 
     def get_list(self):
         ''' recursively obtain all thresholds (bottom of recursion)'''
-        return self.predicted_coefficients 
+        return self.coefficient_sum 
 
 if __name__=='__main__':
 

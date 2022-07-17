@@ -36,6 +36,7 @@ argParser.add_argument("--model",              action="store",      default="ZH_
 argParser.add_argument("--prefix",             action="store",      default=None, type=str,  help="prefix")
 argParser.add_argument("--nTraining",          action="store",      default=500000,        type=int,  help="number of training events")
 argParser.add_argument("--coefficients",       action="store",      default=['cHW'],       nargs="*", help="Which coefficients?")
+argParser.add_argument("--plot_iterations",    action="store",      default=None,          nargs="*", type=int, help="Certain iterations to plot? If first iteration is -1, plot only list provided.")
 argParser.add_argument('--overwrite',          action='store',      default=None, choices = [None, "training", "data", "all"],  help="Overwrite output?")
 argParser.add_argument('--bias',               action='store',      default=None, nargs = "*",  help="Bias training? Example:  --bias 'pT' '10**(({}-200)/200) ")
 argParser.add_argument('--debug',              action='store_true', help="Make debug plots?")
@@ -313,7 +314,17 @@ if args.debug:
     tex.SetNDC()
     tex.SetTextSize(0.06)
 
-    for max_n_tree in range(1,10)+range(10,bit.n_trees+1,10):
+    # Which iterations to plot
+    plot_iterations = range(1,10)+range(10,bit.n_trees+1,10)
+    # Add plot iterations from command line, if provided
+    if type(args.plot_iterations)==type([]):
+        if args.plot_iterations[0]<0:
+            plot_iterations+=args.plot_iterations[1:]
+        else:
+            plot_iterations = args.plot_iterations
+        plot_iterations.sort()
+
+    for max_n_tree in plot_iterations:
         if max_n_tree==0: max_n_tree=1
         stuff = []
         test_predictions = bit.vectorized_predict(test_features, max_n_tree = max_n_tree)
