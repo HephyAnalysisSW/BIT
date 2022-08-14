@@ -6,7 +6,8 @@ import numpy as np
 import random
 import cProfile
 import time
-import os, sys
+import os
+
 from math import log, exp, sqrt
 import copy
 
@@ -16,14 +17,17 @@ from RootTools.core.standard   import *
 # Analysis
 import Analysis.Tools.syncer
 
+import sys
+sys.path.insert(0,'..')
+
 # BIT
 from BoostedInformationTree import BoostedInformationTree
 
 # User
-from user import plot_directory as user_plot_directory
+import user #from user import plot_directory as user_plot_directory
 
 # Model choices
-allModels = set( [ os.path.splitext(item)[0] for item in os.listdir( "toy_models" ) if not item.startswith("_") ] )
+allModels = set( [ os.path.splitext(item)[0] for item in os.listdir( "../toy_models" ) if not item.startswith("_") ] )
 
 # Models an theta values
 # exponential - 0.001
@@ -47,8 +51,9 @@ argParser.add_argument("--max_n_split",        action="store",      default=-1, 
 args = argParser.parse_args()
 
 # import the toy model
-import toy_models as models
-model = getattr( models, args.model )
+import toy_models.exponential as model
+#exec('import toy_models.%s as model'%args.model) #as models
+#model = getattr( models, args.model )
 
 # Produce training data set
 training_features, training_weights, training_diff_weights = model.get_dataset( args.nTraining )
@@ -76,7 +81,7 @@ if args.max_n_split>1:
    model_postfix += "_MNS%i"%args.max_n_split
 
 # directory for plots
-plot_directory = os.path.join( user_plot_directory, args.plot_directory, model.id_string + model_postfix )
+plot_directory = os.path.join( user.plot_directory, args.plot_directory, model.id_string + model_postfix )
 
 if not os.path.isdir(plot_directory):
     os.makedirs( plot_directory )

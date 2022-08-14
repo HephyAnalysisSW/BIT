@@ -7,6 +7,7 @@ import random
 import cProfile
 import time
 import os, sys
+sys.path.insert(0,'..')
 from math import log, exp
 import array
 
@@ -32,7 +33,7 @@ from user import plot_directory as user_plot_directory
 
 
 # Model choices
-allModels = set( [ os.path.splitext(item)[0] for item in os.listdir( "toy_models" ) if not item.startswith("_") and "2D" in item ] )
+allModels = set( [ os.path.splitext(item)[0] for item in os.listdir( os.path.expandvars("$CMSSW_BASE/src/BIT/toy_models" ) ) if not item.startswith("_") and "2D" in item ] )
 
 # Parser
 import argparse

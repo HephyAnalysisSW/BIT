@@ -6,9 +6,10 @@ min_size      = 30
 # import the toy model
 import random
 random.seed(0)
-model = "exponential"
-import toy_models as models
-model = getattr( models, model )
+
+import sys
+sys.path.prepend('..')
+import toy_models.exponential as model
 
 # Produce training data set
 nTraining     = 10000

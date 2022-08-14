@@ -7,6 +7,7 @@ import random
 import cProfile
 import time
 import os, sys
+sys.path.insert( 0, ".." )
 from math import log, exp, sin, cos, sqrt, pi
 import copy
 import operator

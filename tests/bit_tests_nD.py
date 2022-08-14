@@ -7,6 +7,7 @@ import random
 import cProfile
 import time
 import os, sys
+sys.path.insert(0, "..")
 from math import log, exp, sqrt, pow
 import copy
 
@@ -23,7 +24,7 @@ from BoostedInformationTree import BoostedInformationTree
 from user import plot_directory as user_plot_directory
 
 # Model choices
-allModels = set( [ os.path.splitext(item)[0] for item in os.listdir( "toy_models" ) if not item.startswith("_") ] )
+allModels = set( [ os.path.splitext(item)[0] for item in os.listdir( os.path.expandvars("$CMSSW_BASE/src/BIT/toy_models" ) ) if not item.startswith("_") and "2D" in item ] )
 
 # Models an theta values
 # exponential - 0.001
@@ -43,8 +44,9 @@ argParser.add_argument("--ndim",               action="store",      default=1,  
 args = argParser.parse_args()
 
 # import the toy model
-import toy_models as models
-model = getattr( models, args.model )
+#import toy_models as models
+#model = getattr( models, args.model )
+exec('import toy_models.%s as model'%args.model)
 
 # directory for plots
 plot_directory = os.path.join( user_plot_directory, args.plot_directory, str(args.ndim)+"D", model.id_string )

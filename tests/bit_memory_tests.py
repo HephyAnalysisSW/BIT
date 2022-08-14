@@ -6,6 +6,11 @@ import random
 import cProfile
 import time
 
+import sys
+sys.path.append('..')
+from BoostedInformationTree import BoostedInformationTree
+import user #from user import user.plot_directory
+
 from math import log, exp
 import Analysis.Tools.syncer
 import ROOT
@@ -13,10 +18,6 @@ import ROOT
 #import uproot
 #import awkward
 #import pandas as pd
-
-from BoostedInformationTree import BoostedInformationTree
-
-from user import plot_directory
 
 from guppy import hpy
 
@@ -126,7 +127,7 @@ c1 = ROOT.TCanvas()
 h_BSM.Draw("HIST")
 h_SM.Draw("HISTsame")
 c1.SetLogy(make_log)
-c1.Print("%s/model_%s.png"%(plot_directory,id_))
+c1.Print("%s/model_%s.png"%(user.plot_directory,id_))
 
 heap_status1 = heap.heap()
 bit = BoostedInformationTree(
@@ -165,7 +166,7 @@ fitted = score_histo( bit )
 fitted.SetLineColor(ROOT.kBlack)
 fitted.Draw("HISTsame")
 c1.SetLogy(0)
-c1.Print("%s/score_boosted_%s.png"%(plot_directory,id_))
+c1.Print("%s/score_boosted_%s.png"%(user.plot_directory,id_))
 
 test_features, test_weights, test_diff_weights = get_dataset( n_events )
 
@@ -236,7 +237,7 @@ training_profile.Draw("hist")
 test_profile.Draw("histsame")
 training_BSM_profile.Draw("histsame")
 test_BSM_profile.Draw("histsame")
-c1.Print("%s/score_profile_validation_profile_%s.png"%(plot_directory,id_))
+c1.Print("%s/score_profile_validation_profile_%s.png"%(user.plot_directory,id_))
 
 training.SetLineColor(ROOT.kBlue)
 test    .SetLineColor(ROOT.kBlue)
@@ -264,7 +265,7 @@ l.SetFillStyle(0)
 l.SetShadowColor(ROOT.kWhite)
 l.SetBorderSize(0)
 l.Draw()
-c1.Print("%s/score_validation_%s.png"%(plot_directory,id_))
+c1.Print("%s/score_validation_%s.png"%(user.plot_directory,id_))
 
 
 for name, test_FIs_, training_FIs_ in [
@@ -296,7 +297,7 @@ for name, test_FIs_, training_FIs_ in [
     l.SetBorderSize(0)
     l.Draw()
     c1.SetLogy(0)
-    c1.Print("%s/FI_evolution_%s_%s.png"%(plot_directory,id_,name))
+    c1.Print("%s/FI_evolution_%s_%s.png"%(user.plot_directory,id_,name))
 
 # Let's fit a single tree with different depths
 #for depth in range(1,4):
