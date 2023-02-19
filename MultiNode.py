@@ -14,7 +14,7 @@ default_cfg = {
     "max_depth":        4,
     "min_size" :        50,
     "max_n_split":      -1,     # similar to TMVA: test only max_n_split values in the node-split search. (Not thoroughly tested yet and usually not needed.)
-    "base_points":      None,   
+    "base_points":      None,
     "feature_names":    None,
     "positive":         False,  # only perform node split when the resulting yields are positive definite. I do not recommend this, the bias-variance tradeoff is not favourable.
     "min_node_size_neg_adjust": False, # Increase the min_size parameter by (1+f)/(1-f) where f is n-/n+ where n- (n+) are the number of events with negative (positive) weight 
@@ -50,7 +50,7 @@ class MultiNode:
             self.training_weights   = {tuple(sorted(key)):val for key,val in training_weights.items()}
 
             assert ('base_points' in kwargs) and kwargs['base_points'] is not None, "Must provide base_points in cfg"
-            assert all( [ key in self.training_weights for key in self.derivatives ]), "Incomplete list of keys in training_weights?" 
+            assert all( [ key in self.training_weights for key in self.derivatives ]), "Incomplete list of keys in training_weights?"
 
             # precoumputed base_point_const
             self.base_points      = kwargs['base_points']

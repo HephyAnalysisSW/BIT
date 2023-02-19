@@ -412,13 +412,12 @@ if args.training_plots:
 
             h_w0[feature]           = np.array([  w0[m].sum() for m in mask])
             h_derivative_prediction = np.array([ (w0.reshape(-1,1)*test_predictions)[m].sum(axis=0) for m in mask])
-            h_derivative_truth      = np.array([ (np.transpose(np.array([test_weights[der] for der in bit.derivatives])))[m].sum(axis=0) for m in mask])
-
+            h_derivative_truth      = np.array([ (np.transpose(np.array([test_weights[der] for der in bit.derivatives])))[m].sum(axis=0) for m in mask]) 
             h_ratio_prediction[feature] = h_derivative_prediction/h_w0[feature].reshape(-1,1) 
             h_ratio_truth[feature]      = h_derivative_truth/h_w0[feature].reshape(-1,1)
 
         n_pads = len(model.feature_names)+1
-        n_col  = min(4, n_pads)
+        n_col  = int(sqrt(n_pads)) 
         n_rows = n_pads//n_col
         if n_rows*n_col<n_pads: n_rows+=1
 

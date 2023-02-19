@@ -45,11 +45,13 @@ class MultiBoostedInformationTree:
         if self.learning_rate == "auto":
             self.learning_rate = 1-0.02**(1./self.n_trees)
 
-        self.training_weights       = copy.deepcopy(training_weights)
-        self.training_features      = training_features
+        self.training_weights   = copy.deepcopy(training_weights)
+        if training_weights is not None:
+            self.training_weights   = {tuple(sorted(key)):val for key,val in self.training_weights.items()}
+        self.training_features  = training_features
 
         # Will hold the trees
-        self.trees                  = []
+        self.trees              = []
 
     @classmethod
     def load(cls, filename):
@@ -178,7 +180,7 @@ class MultiBoostedInformationTree:
         predictions = np.array([ tree.vectorized_predict( feature_array ) for tree in self.trees[:max_n_tree] ])
         predictions = predictions[:,:,1:]/np.expand_dims(predictions[:,:,0], -1)
 
-        weight_ratio = np.array( [weight_dict[der]/weight_dict[()] for der in self.derivatives]).transpose().astype('float')
+        weight_ratio = np.array( [ (weight_dict[der]/weight_dict[()] if der in weight_dict else weight_dict[tuple(reversed(der))]/weight_dict[()]) for der in self.derivatives]).transpose().astype('float')
         # losses
         return -( weight_dict[()][np.newaxis,...,np.newaxis]*np.dot( (predictions - (weight_ratio[np.newaxis,...])), base_point_const )**2).sum(axis=(1,2))
         
